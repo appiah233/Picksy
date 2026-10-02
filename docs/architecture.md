@@ -138,7 +138,7 @@ Security is built into the repository foundation from day zero:
 
 **GitLab Auto DevOps is the authoritative CI/CD platform.**
 
-- No custom pipeline scripts or deployment manifests (such as custom `.gitlab-ci.yml`, Dockerfiles, Helm charts, or Kubernetes manifests) are permitted to override standard Auto DevOps behavior.
+- `.gitlab-ci.yml` includes the standard Auto DevOps template and overrides only the legacy Herokuish test job with the project's required Node.js 22 runtime. Build, security, and deployment jobs remain managed by Auto DevOps.
 - The project adheres to standard Node.js build conventions:
   - Standard `package.json` lifecycle scripts (`build`, `start`, `lint`).
   - Strict Node.js version declaration via `.nvmrc` and `engines` field in `package.json`.

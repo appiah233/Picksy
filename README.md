@@ -76,7 +76,7 @@ The platform is engineered using modern, type-safe web technologies:
 
 Picksy strictly complies with GitLab Auto DevOps standards:
 
-- **No Custom Pipelines:** No custom `.gitlab-ci.yml`, Dockerfiles, Helm charts, or Kubernetes manifests are added that could override Auto DevOps defaults.
+- **Minimal Test Override:** `.gitlab-ci.yml` includes the standard Auto DevOps template and overrides only its legacy Herokuish test job so checks run on the project's required Node.js 22 runtime.
 - **Standard Lifecycle Scripts:** `package.json` provides standard, predictable scripts (`build`, `start`, `lint`, `typecheck`).
 - **Cloud Native Buildpack Compatibility:** The repository adheres to standard Node.js project structures, enabling Auto DevOps to detect, build, test, and package the application automatically.
 - **Zero Secret Exposure:** All runtime environment configurations are injected at the platform level; no sensitive secrets or production credentials reside within the codebase.

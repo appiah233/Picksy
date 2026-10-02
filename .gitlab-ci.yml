@@ -1,0 +1,9 @@
+include:
+  - template: Auto-DevOps.gitlab-ci.yml
+
+test:
+  image: node:22-bookworm-slim
+  services: []
+  script:
+    - npm ci
+    - npm test
