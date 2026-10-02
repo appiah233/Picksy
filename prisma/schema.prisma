@@ -1,0 +1,20 @@
+// Prisma schema file for Picksy
+// Target Database: Neon PostgreSQL (Serverless)
+// Note: Phase 1 establishes the schema blueprint; active database connections are out of scope.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// Future models (Phase 2+ roadmap blueprint):
+// - SoftwareProduct (SaaS tools: HighLevel, SE Ranking, systeme.io)
+// - Category (CRM, SEO, Email, Course Platforms, Hosting, Security)
+// - Review (Editorial evaluations, ratings, breakdown)
+// - Comparison (Head-to-head feature matrices)
+// - NewsletterSubscriber (Double-opt-in subscriber records)
