@@ -9,7 +9,7 @@ job. It needs Node.js 22 and one package, the official `openai` SDK.
 
 **Status:** implemented and tested against simulated GitLab and OpenAI responses. It has not been
 deployed, and it has not yet run against the real GitLab project or the real OpenAI API. The bot
-account, webhook and hosting described below do not exist until the project owner creates them.
+account exists; the hosting and webhook described below do not.
 
 ## What Guardian may and may not do
 
@@ -95,20 +95,30 @@ Run a single instance. Two instances could both create a comment for the same ne
 
 ## Setup
 
-These steps need the project owner. None of them has been done.
+These steps need the project owner. Step 1 is done; hosting, configuration and the webhook are not.
 
-### 1. Bot account
+### 1. Bot account (done)
 
-Guardian needs its own GitLab identity. Do not use a personal token of a team member.
+Guardian has its own GitLab identity, created on 8 October 2026 as a project access token. It
+was reported by the agent that created it and has not been checked from this repository.
 
-- **GitLab.com Premium or Ultimate, or self-managed:** create a project access token named
-  `Picksy Guardian` with role **Reporter** and scope **`api`**. GitLab creates the bot user.
-- **GitLab.com Free:** project access tokens are not available. Create a separate GitLab user
-  for the bot, add it to the project as **Reporter**, and create a personal access token for
-  that user with scope **`api`**.
+| Item          | Value                                                   |
+| ------------- | ------------------------------------------------------- |
+| Project ID    | `87130489`                                              |
+| Bot name      | Picksy Guardian                                         |
+| Bot username  | `project_87130489_bot_ce37914448e785e1ff88a2a665d85415` |
+| Bot user ID   | `43173033`                                              |
+| Role          | Reporter                                                |
+| Token scope   | `api`                                                   |
+| Token expires | 8 October 2027                                          |
 
-The subscription tier of `appiah233/picksy` has not been checked, so which of the two applies is
-still open.
+The token value is held by the project owner and is not in this repository. Guardian stops
+working when the token expires, so rotate it before then and update `GUARDIAN_GITLAB_TOKEN`.
+
+The project is on GitLab.com Free. GitLab's documentation says project access tokens need a paid
+plan on GitLab.com, yet the project offered one. If that option is ever withdrawn, the
+replacement is a separate GitLab user added as **Reporter** with a personal access token of
+scope **`api`**. Never use a team member's personal token.
 
 GitLab has no narrower scope that allows writing a comment, so `api` is required. The Reporter
 role is what limits the bot: a Reporter cannot push, merge, delete branches, change protected
@@ -137,7 +147,7 @@ Set these as secrets on the host. Never commit them, and do not add them to GitL
 
 | Variable                         | Required | Purpose                                                     |
 | -------------------------------- | -------- | ----------------------------------------------------------- |
-| `GUARDIAN_GITLAB_PROJECT_ID`     | yes      | Numeric ID of the one project Guardian reviews              |
+| `GUARDIAN_GITLAB_PROJECT_ID`     | yes      | Numeric ID of the one project Guardian reviews: `87130489`  |
 | `GUARDIAN_GITLAB_TOKEN`          | yes      | The bot account's access token                              |
 | `GUARDIAN_WEBHOOK_SIGNING_TOKEN` | one of   | Webhook signing token (`whsec_…`), GitLab 19.1 or later     |
 | `GUARDIAN_WEBHOOK_SECRET`        | one of   | Legacy webhook secret token, at least 32 characters         |
