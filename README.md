@@ -4,6 +4,21 @@
 
 Picksy currently publishes a landing page with six planned software categories. Gate 2 adds typed repository-managed catalog contracts, validation, and category/product route architecture. No category, product review, or affiliate offer is published because verified editorial research, merchant authorization, and a production origin have not been supplied. The new routes return a not-found page until publishable content is added. The site intentionally emits `noindex` metadata and does not advertise a sitemap at this stage.
 
+### Picksy Guardian
+
+Picksy Guardian is a Merge Request reviewer bot in
+[`tools/picksy-guardian/`](./tools/picksy-guardian/). It is a small standalone
+service, separate from the Picksy application and from CI: GitLab sends it
+Merge Request webhooks, and it reviews each new revision and keeps one summary
+comment on the Merge Request up to date. Its only write to GitLab is that
+comment. It never changes code, approves or merges requests, deploys,
+authorizes a Gate, or publishes catalogue content; a human reviewer decides.
+
+Setup, configuration, the bot identity and the security model are in the
+[Guardian README](./tools/picksy-guardian/README.md). The service is not yet
+deployed, and no bot account or webhook exists until the project owner creates
+them.
+
 Content records are held in `src/content/catalog.ts` and checked by `src/lib/catalog-validation.ts`. A category becomes a home-page link only when it has a publishable reviewed product. Merchant destinations belong in the offer registry, not page JSX. Publication requires editorial review of sources, claims, authorization, and disclosure wording; passing code validation alone does not establish those facts.
 
 For a published category, the catalog record is authoritative for its displayed name, description, and slug; `src/config/site.ts` supplies the planned category cards and icons. An active affiliate offer references one approved destination ID owned by its merchant. That destination record contains the exact HTTPS URL, including path and query, plus an authorization-evidence reference. The validator enforces the binding and allows only one active offer per product. An editor must still verify the agreement, full URL, and disclosure wording before publication.

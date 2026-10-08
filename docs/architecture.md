@@ -121,6 +121,28 @@ Security is built into the repository foundation from day zero:
 
 ## 6. Deployment & CI/CD Topology
 
+### 6.1 Picksy Guardian
+
+Picksy Guardian is an event-driven Merge Request reviewer bot under
+`tools/picksy-guardian/`. It is an independently deployed Node.js service whose
+only package dependency is the `openai` SDK; it is not a Next.js route, a CI job, a database
+integration, or a catalogue source, and it shares no code with `src/`.
+
+GitLab delivers Merge Request webhooks to the service. Guardian authenticates
+each delivery, then reads the Merge Request, diff and pipeline status from the
+GitLab API with a dedicated bot account. It applies the deterministic checks
+defined by `policy.json`, sends bounded, secret-redacted context to the OpenAI
+Responses API for a schema-validated assessment, and creates or updates one
+summary comment. A hidden marker in that comment records the project, Merge
+Request, revision and policy version reviewed, so the service needs no
+database. CI is a source of evidence for Guardian, not its controller.
+
+Guardian can only comment. It cannot approve or merge requests, authorize
+Gates, alter application code, deploy, or populate the production catalogue.
+An unreviewable diff, an unavailable API, a refusal or a malformed AI response
+is reported as INCONCLUSIVE, never as PASS. See
+`tools/picksy-guardian/README.md` for the trust boundaries and threat model.
+
 ```
 [Developer]
     │

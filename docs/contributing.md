@@ -83,6 +83,14 @@ All contributions must be submitted via GitLab Merge Requests targeting `develop
 
 ## 4. Quality Validation & Testing Standards
 
+Once deployed, Picksy Guardian reviews every new revision of a Merge Request
+and keeps a single summary comment up to date. Treat that comment as evidence
+for your own review: a PASS is advisory and is never Gate authorization,
+editorial or merchant approval, or permission to merge. Guardian only comments;
+it does not approve, merge, or modify repository files. Changes under
+`tools/picksy-guardian/` are reviewed by the deployed Guardian, not the proposed
+one, and need the project owner's review.
+
 Before creating a Merge Request, you must execute the full validation suite locally:
 
 ```bash
