@@ -3,7 +3,8 @@ import { SiteConfig } from "@/types";
 export const siteConfig: SiteConfig = {
   name: "Picksy",
   tagline: "Helping businesses pick the right software with confidence.",
-  description: "Picksy is preparing evidence-based software reviews for growing businesses.",
+  description:
+    "Picksy researches business software. Reviews appear here after their sources and claims are verified.",
   url: process.env.NEXT_PUBLIC_APP_URL || "",
   categories: [
     {

@@ -49,7 +49,7 @@ export default function HomePage() {
       <section className="relative border-b border-zinc-200/80 bg-white px-4 py-20 sm:px-6 sm:py-28 lg:py-36">
         <div className="mx-auto max-w-4xl text-center">
           <div className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-medium text-zinc-600 mb-6">
-            <span>Software Discovery & Evaluation in Preparation</span>
+            <span>Software Discovery & Evaluation</span>
           </div>
 
           <h1 className="text-4xl font-extrabold tracking-tight text-zinc-950 sm:text-5xl lg:text-6xl leading-[1.15]">
@@ -57,8 +57,8 @@ export default function HomePage() {
           </h1>
 
           <p className="mx-auto mt-6 max-w-2xl text-lg text-zinc-600 leading-relaxed sm:text-xl">
-            Picksy is preparing evidence-based software reviews for growing businesses. Coverage
-            will appear here as it is researched and verified.
+            Picksy researches business software. Reviews appear here after their sources and claims
+            are verified. Explore our coverage areas below.
           </p>
 
           <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
@@ -90,10 +90,10 @@ export default function HomePage() {
               Coverage Areas
             </p>
             <h2 className="mt-2 text-3xl font-bold tracking-tight text-zinc-950 sm:text-4xl">
-              Software Categories We Plan to Evaluate
+              Software Coverage Areas
             </h2>
             <p className="mt-3 text-base text-zinc-600">
-              Planned coverage across essential business software disciplines.
+              Reviewed categories link to published products. Other areas show planned coverage.
             </p>
           </div>
 
@@ -154,10 +154,10 @@ export default function HomePage() {
               Our Methodology
             </p>
             <h2 className="mt-2 text-3xl font-bold tracking-tight text-zinc-950 sm:text-4xl">
-              How Picksy Will Review Software
+              Picksy Review Standards
             </h2>
             <p className="mt-3 text-base text-zinc-600">
-              Standards planned for each review before it is published.
+              Standards applied to each review before it is published.
             </p>
           </div>
 
