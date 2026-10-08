@@ -1,93 +1,207 @@
 # Picksy
 
+## Current implementation status
 
+Picksy currently publishes a landing page with six planned software categories. Gate 2 adds typed repository-managed catalog contracts, validation, and category/product route architecture. No category, product review, or affiliate offer is published because verified editorial research, merchant authorization, and a production origin have not been supplied. The new routes return a not-found page until publishable content is added. The site intentionally emits `noindex` metadata and does not advertise a sitemap at this stage.
 
-## Getting started
+### Picksy Guardian
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+Picksy Guardian is a Merge Request reviewer bot in
+[`tools/picksy-guardian/`](./tools/picksy-guardian/). It is a small standalone
+service, separate from the Picksy application and from CI: GitLab sends it
+Merge Request webhooks, and it reviews each new revision and keeps one summary
+comment on the Merge Request up to date. Its only write to GitLab is that
+comment. It never changes code, approves or merges requests, deploys,
+authorizes a Gate, or publishes catalogue content; a human reviewer decides.
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+Setup, configuration, the bot identity and the security model are in the
+[Guardian README](./tools/picksy-guardian/README.md). The service is not yet
+deployed, and no bot account or webhook exists until the project owner creates
+them.
 
-## Add your files
+Content records are held in `src/content/catalog.ts` and checked by `src/lib/catalog-validation.ts`. A category becomes a home-page link only when it has a publishable reviewed product. Merchant destinations belong in the offer registry, not page JSX. Publication requires editorial review of sources, claims, authorization, and disclosure wording; passing code validation alone does not establish those facts.
 
-* [Create](https://docs.gitlab.com/user/project/repository/web_editor/#create-a-file) or [upload](https://docs.gitlab.com/user/project/repository/web_editor/#upload-a-file) files
-* [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
+For a published category, the catalog record is authoritative for its displayed name, description, and slug; `src/config/site.ts` supplies the planned category cards and icons. An active affiliate offer references one approved destination ID owned by its merchant. That destination record contains the exact HTTPS URL, including path and query, plus an authorization-evidence reference. The validator enforces the binding and allows only one active offer per product. An editor must still verify the agreement, full URL, and disclosure wording before publication.
 
+Editorial dates use `YYYY-MM-DD` in UTC. Validation requires evaluation date ≤ publication date ≤ last-reviewed date ≤ the current UTC date when the catalog is built. Editors should use the actual UTC dates of their work; a future date blocks publication.
+
+Local validation uses Node.js 22: `npm test` runs ESLint, TypeScript, and catalog tests; `npm run build` verifies production compilation. GitLab pipeline and deployed behavior require separate evidence.
+
+> **Helping businesses pick the right software with confidence.**
+
+---
+
+## What is Picksy?
+
+**Picksy** is an independent software discovery and implementation platform designed to help modern organizations—including agencies, consultants, small-to-medium enterprises (SMEs), entrepreneurs, creators, and technical professionals—choose and adopt business software with clarity, confidence, and objective evidence.
+
+Modern SaaS markets are crowded with aggressive marketing and inflated claims. Picksy aims to address this by publishing:
+
+- Objective, hands-on evaluations.
+- Real-world operational workflows and architecture considerations.
+- Transparent trade-offs, pricing traps, and scalability ceilings.
+- Actionable implementation blueprints and migration playbooks.
+
+---
+
+## Product Vision & Market Positioning
+
+Picksy aims to be the gold standard in B2B software advisory. Rather than acting as a superficial directory, Picksy provides deep implementation insight that empowers technical decision makers and business owners to build resilient, cost-effective tech stacks.
+
+### Target Audience
+
+- **Agencies & System Integrators:** Choosing client-facing delivery platforms, marketing engines, and client portals.
+- **Consultants & Fractional Leaders:** Evaluating enterprise-ready tooling for rapid client deployment.
+- **SMEs & Growing Businesses:** Streamlining operations, CRM pipelines, and customer acquisition.
+- **Entrepreneurs & Creators:** Building lean, high-margin digital businesses with reliable infrastructure.
+- **Technical Professionals & Developers:** Demanding truthful architectural breakdowns, API quality, and data portability.
+
+---
+
+## MVP Scope & Category Focus
+
+In Phase 1, Picksy establishes its core technical and editorial foundation without premature commercial integrations.
+
+### Primary Coverage Categories
+
+1. **CRM & Automation** (e.g., HighLevel, ActiveCampaign, HubSpot)
+2. **SEO Software** (e.g., SE Ranking, Ahrefs, Semrush)
+3. **Email Marketing** (e.g., systeme.io, ConvertKit, Klaviyo)
+4. **Course Platforms** (e.g., Skool, Kajabi, Teachable)
+5. **Managed Hosting** (e.g., Kinsta, Cloudways, WP Engine)
+6. **Cybersecurity** (e.g., 1Password, Bitwarden, Cloudflare)
+
+### Initial Product Spotlight
+
+- **HighLevel:** Comprehensive evaluation for agency workflows, sub-account limits, and white-label CRM setups.
+- **SE Ranking:** In-depth analysis of ranking accuracy, keyword clustering, and agency reporting capabilities.
+- **systeme.io:** Objective review of all-in-one automation, funnel limits, and course hosting economics.
+
+---
+
+## Technology Stack
+
+The platform is engineered using modern, type-safe web technologies:
+
+| Layer                 | Technology                   | Specification / Role                                               |
+| --------------------- | ---------------------------- | ------------------------------------------------------------------ |
+| **Framework**         | Next.js 15                   | App Router, React Server Components (RSC), Edge Runtime            |
+| **Language**          | TypeScript 5                 | Strict mode enabled, zero `any` allowance, `@/*` aliases           |
+| **Styling**           | Tailwind CSS v4              | PostCSS integration, design system tokens, zero runtime CSS-in-JS  |
+| **Components**        | Radix UI / Shadcn Principles | Accessible primitives, clean B2B aesthetic, mobile-first           |
+| **Icons**             | Lucide React                 | Lightweight, tree-shakable SVG icon system                         |
+| **Database (Future)** | Neon PostgreSQL              | Serverless PostgreSQL with connection pooling                      |
+| **ORM (Future)**      | Prisma ORM                   | Type-safe schema definition and migration blueprint                |
+| **Hosting**           | Vercel                       | Global edge caching, instant preview deployments                   |
+| **CI / CD**           | GitLab Auto DevOps           | Repository test override; inherited jobs require pipeline evidence |
+
+---
+
+## Auto DevOps Strategy
+
+> **GitLab Auto DevOps manages build and deployment processes.**
+
+Picksy strictly complies with GitLab Auto DevOps standards:
+
+- **Test Override:** `.gitlab-ci.yml` includes the standard Auto DevOps template and runs `npm ci`, `npm test`, and `npm run build` on Node.js 22.
+- **Standard Lifecycle Scripts:** `package.json` provides standard, predictable scripts (`build`, `start`, `lint`, `typecheck`).
+- **Cloud Native Buildpack Compatibility:** The repository adheres to standard Node.js project structures, enabling Auto DevOps to detect, build, test, and package the application automatically.
+- **Zero Secret Exposure:** All runtime environment configurations are injected at the platform level; no sensitive secrets or production credentials reside within the codebase.
+
+---
+
+## Branching Strategy & Git Workflow
+
+We adhere to a disciplined GitFlow model:
+
+- **`main`**: Production-ready branch. Deployed automatically by Auto DevOps to production.
+- **`develop`**: Integration branch where completed feature branches land after review.
+- **`feature/*`**: Dedicated feature branches branched from and targeting `develop` (e.g., `feature/initial-foundation`).
+- **`fix/*`**: Bug fixes targeting `develop`.
+
+### Conventional Commits
+
+All commit messages must follow the [Conventional Commits](https://www.conventionalcommits.org/) standard:
+
+```bash
+feat(landing): implement hero and category showcase sections
+docs(readme): add Auto DevOps and governance specifications
+chore(config): configure strict TypeScript and ESLint standards
 ```
-cd existing_repo
-git remote add origin https://gitlab.com/appiah233/picksy.git
-git branch -M main
-git push -uf origin main
+
+---
+
+## Local Development Steps
+
+### Prerequisites
+
+- **Node.js:** `22.x` via `.nvmrc`
+- **Package Manager:** `npm` (or `pnpm`)
+
+### Setup Instructions
+
+```bash
+# 1. Clone the repository
+git clone https://gitlab.com/appiah233/picksy.git
+cd picksy
+
+# 2. Checkout the integration branch
+git checkout develop
+
+# 3. Use the prescribed Node version
+nvm use
+
+# 4. Install dependencies
+npm install
+
+# 5. Create local environment file from example
+cp .env.example .env.local
+
+# 6. Start development server
+npm run dev
 ```
 
-## Integrate with your tools
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-* [Set up project integrations](https://gitlab.com/appiah233/picksy/-/settings/integrations)
+---
 
-## Collaborate with your team
+## Quality Validation Scripts
 
-* [Invite team members and collaborators](https://docs.gitlab.com/user/project/members/)
-* [Create a new merge request](https://docs.gitlab.com/user/project/merge_requests/creating_merge_requests/)
-* [Automatically close issues from merge requests](https://docs.gitlab.com/user/project/issues/managing_issues/#closing-issues-automatically)
-* [Enable merge request approvals](https://docs.gitlab.com/user/project/merge_requests/approvals/)
-* [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+Picksy requires all code to pass static analysis, type checking, and production build gates before submission:
 
-## Test and Deploy
+```bash
+# Type check TypeScript definitions
+npm run typecheck
 
-Use the built-in continuous integration in GitLab.
+# Lint codebase with ESLint
+npm run lint
 
-* [Get started with GitLab CI/CD](https://docs.gitlab.com/ci/quick_start/)
-* [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/user/application_security/sast/)
-* [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/topics/autodevops/requirements/)
-* [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/user/clusters/agent/)
-* [Set up protected environments](https://docs.gitlab.com/ci/environments/protected_environments/)
+# Format code with Prettier
+npm run format
 
-***
+# Verify production build compilation
+npm run build
+```
 
-# Editing this README
+---
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+## Security Principles
 
-## Suggestions for a good README
+1. **Zero Hardcoded Secrets:** Credentials, database connection strings, and third-party tokens must never be committed. Always use `.env.example` as a sanitised guide.
+2. **Affiliate Links:** Future published offers must use reviewed HTTPS destinations, adjacent disclosure, and sponsored link attributes.
+3. **Editorial Review:** Technical validation cannot replace verification of merchant authorization, sources, and legal wording.
+4. **Supply Chain Protection:** Dependencies are kept minimal and locked for clean CI installation; audit status requires separate evidence.
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+---
 
-## Name
-Choose a self-explaining name for your project.
+## Engineering Governance & Definition of Done
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+A task or Merge Request is considered **Done** only when:
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
-
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
-
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
-
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
-
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
-
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
-
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
-
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
-
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+- [x] Authored within a dedicated `feature/*` branch targeting `develop`.
+- [x] Zero TypeScript compilation errors (`npm run typecheck`).
+- [x] Zero ESLint warnings or errors (`npm run lint`).
+- [x] Successful production build generation (`npm run build`).
+- [ ] Mobile responsiveness and WCAG contrast verified in a browser.
+- [ ] Clean conventional commit history with descriptive messages.
+- [ ] Merge Request description submitted with complete terminal verification evidence.

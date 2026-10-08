@@ -1,0 +1,113 @@
+{
+  "version": "2.0.0",
+  "gate": {
+    "current": 3,
+    "authorized": false,
+    "status": "UNAUTHORIZED",
+    "readiness": "NOT READY",
+    "openPrerequisites": [
+      {
+        "id": "R1",
+        "requirement": "Verified merchant identity, exact HTTPS destination and independently inspectable authorization evidence",
+        "status": "MISSING"
+      },
+      {
+        "id": "R2",
+        "requirement": "Source-backed first product and editorial packet",
+        "status": "MISSING"
+      },
+      {
+        "id": "R4",
+        "requirement": "Owner-selected production HTTPS origin and deployment assumptions",
+        "status": "MISSING"
+      },
+      {
+        "id": "R5",
+        "requirement": "Safe populated rendered-test mechanism",
+        "status": "UNVERIFIED"
+      }
+    ]
+  },
+  "approvedArchitecture": [
+    "Typed, repository-managed catalogue records behind a validated access layer.",
+    "Direct merchant links; Picksy never redirects through its own endpoints.",
+    "Approved destinations are owned by a merchant record and selected by a stable destination ID.",
+    "A destination is an exact HTTPS URL, validated including path and query, with a required authorization-evidence reference.",
+    "At most one active offer per product.",
+    "One combined product and review page.",
+    "External review-source links are labelled and safe.",
+    "Published content is driven by the authoritative catalogue, not by page markup.",
+    "Synthetic test data is separate from production data."
+  ],
+  "invariants": [
+    "The production catalogue stays empty while Gate 3 is unauthorized.",
+    "Synthetic fixtures are never imported by production application code or exposed through an environment switch.",
+    "Template.txt is unrelated to the product and stays untouched.",
+    "Catalogue validation and its tests are not weakened or removed.",
+    "No secrets, credentials or tokens are committed.",
+    "The site stays noindex and no deployment or indexing change is made without owner authorization."
+  ],
+  "forbiddenScope": [
+    "Real merchant, product, review, destination or offer records.",
+    "Checkout, payments, accounts, merchant portal, scraping, ingestion or analytics expansion.",
+    "Deployment, hosting, production-origin or indexing changes.",
+    "Changes that weaken Guardian policy or Guardian security controls."
+  ],
+  "externalEvidenceBoundaries": [
+    "A repository value, URL or authorization reference is never proof that merchant or editorial evidence exists.",
+    "A reachable affiliate URL does not establish merchant authorization.",
+    "Guardian cannot verify external evidence; it reports such evidence as MISSING or UNVERIFIED only.",
+    "A Guardian or AI PASS is advisory and never authorizes a Gate, a merge, a publication or a deployment."
+  ],
+  "paths": {
+    "immutable": ["Template.txt"],
+    "productionCatalogue": "src/content/catalog.ts",
+    "catalogueCollections": ["categories", "products", "reviews", "merchants", "offers"],
+    "productionSource": ["src/"],
+    "tests": ["tests/"],
+    "protectedTests": ["tests/catalog.test.mjs"],
+    "guardianPolicy": ["tools/picksy-guardian/policy.json"],
+    "guardianControls": ["tools/picksy-guardian/", "tests/guardian.test.mjs"],
+    "deployment": [
+      ".gitlab-ci.yml",
+      ".gitlab/",
+      "Dockerfile",
+      "docker-compose.yml",
+      "vercel.json",
+      "next.config.ts",
+      "public/robots.txt",
+      "prisma/",
+      "chart/",
+      "infra/",
+      "deployment/",
+      "terraform/"
+    ],
+    "lockfiles": ["package-lock.json", "pnpm-lock.yaml", "yarn.lock", "npm-shrinkwrap.json"],
+    "generated": [".next/", "out/", "build/", "dist/", "node_modules/"]
+  },
+  "pipeline": {
+    "requiredJobs": ["test", "build"]
+  },
+  "limits": {
+    "maxChangedFiles": 100,
+    "maxTotalDiffBytes": 120000,
+    "maxFileDiffBytes": 40000,
+    "maxLineLength": 1000,
+    "maxDescriptionChars": 4000,
+    "maxFindings": 25
+  },
+  "severityRules": {
+    "BLOCKING": "A proven violation of a protected invariant. The revision must not merge as it stands.",
+    "HIGH": "A change to protected state or controls, or strong evidence of a violation, that needs an accountable human decision.",
+    "MEDIUM": "A heuristic signal or missing evidence that a human should check.",
+    "LOW": "A minor observation that does not affect the decision.",
+    "INFO": "Context only."
+  },
+  "decisionRules": [
+    "FAIL when any finding is BLOCKING, or the AI review returns FAIL.",
+    "INCONCLUSIVE when any part of the revision could not be reviewed, or the AI review did not complete with a valid structured result. An incomplete review is never reported as PASS or WARN.",
+    "WARN when the review is complete and any finding is HIGH or MEDIUM.",
+    "PASS only when the review is complete and no finding is above LOW.",
+    "The final status is the worst of the deterministic status and the AI status. AI output can never improve a deterministic result."
+  ]
+}
