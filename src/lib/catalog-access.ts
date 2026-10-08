@@ -58,12 +58,17 @@ function activeOffer(records: CatalogRecords, productId: string): ResolvedOffer 
   return undefined;
 }
 
-export function createCatalogAccess(records: CatalogRecords) {
+const validatedAccessors = new WeakSet<object>();
+
+export function createCatalogAccess(source: CatalogRecords) {
+  // Validate and serve a private copy, so later changes to the caller's records cannot reach a
+  // page without passing validation.
+  const records = structuredClone(source);
   const errors = validateCatalog(records);
   if (errors.length) throw new Error(`Invalid catalog: ${errors.join("; ")}`);
   const categories = (): Category[] =>
     records.categories.filter((category) => category.state === "published");
-  return {
+  const access = Object.freeze({
     getPublishedCategories: categories,
     getPublishedCategoryBySlug: (slug: string): Category | undefined =>
       categories().find((category) => category.slug === slug),
@@ -75,5 +80,17 @@ export function createCatalogAccess(records: CatalogRecords) {
       publishedReview(records, productId),
     getActiveOfferForProduct: (productId: string): ResolvedOffer | undefined =>
       activeOffer(records, productId),
-  };
+  });
+  validatedAccessors.add(access);
+  return access;
+}
+
+export type CatalogAccess = ReturnType<typeof createCatalogAccess>;
+
+// Pages render only from an accessor made by createCatalogAccess. An object that merely has the
+// same shape has not been validated and is refused.
+export function assertValidatedCatalog(catalog: CatalogAccess): void {
+  if (!validatedAccessors.has(catalog)) {
+    throw new Error("Catalogue accessor was not created by createCatalogAccess.");
+  }
 }
