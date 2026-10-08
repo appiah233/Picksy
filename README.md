@@ -1,5 +1,17 @@
 # Picksy
 
+## Current implementation status
+
+Picksy currently publishes a landing page with six planned software categories. Gate 2 adds typed repository-managed catalog contracts, validation, and category/product route architecture. No category, product review, or affiliate offer is published because verified editorial research, merchant authorization, and a production origin have not been supplied. The new routes return a not-found page until publishable content is added. The site intentionally emits `noindex` metadata and does not advertise a sitemap at this stage.
+
+Content records are held in `src/content/catalog.ts` and checked by `src/lib/catalog-validation.ts`. A category becomes a home-page link only when it has a publishable reviewed product. Merchant destinations belong in the offer registry, not page JSX. Publication requires editorial review of sources, claims, authorization, and disclosure wording; passing code validation alone does not establish those facts.
+
+For a published category, the catalog record is authoritative for its displayed name, description, and slug; `src/config/site.ts` supplies the planned category cards and icons. An active affiliate offer references one approved destination ID owned by its merchant. That destination record contains the exact HTTPS URL, including path and query, plus an authorization-evidence reference. The validator enforces the binding and allows only one active offer per product. An editor must still verify the agreement, full URL, and disclosure wording before publication.
+
+Editorial dates use `YYYY-MM-DD` in UTC. Validation requires evaluation date ≤ publication date ≤ last-reviewed date ≤ the current UTC date when the catalog is built. Editors should use the actual UTC dates of their work; a future date blocks publication.
+
+Local validation uses Node.js 22: `npm test` runs ESLint, TypeScript, and catalog tests; `npm run build` verifies production compilation. GitLab pipeline and deployed behavior require separate evidence.
+
 > **Helping businesses pick the right software with confidence.**
 
 ---
@@ -8,7 +20,7 @@
 
 **Picksy** is an independent software discovery and implementation platform designed to help modern organizations—including agencies, consultants, small-to-medium enterprises (SMEs), entrepreneurs, creators, and technical professionals—choose and adopt business software with clarity, confidence, and objective evidence.
 
-Modern SaaS markets are crowded with aggressive marketing, inflated claims, and affiliate aggregators that rank tools based solely on commission rates. Picksy solves this problem by delivering:
+Modern SaaS markets are crowded with aggressive marketing and inflated claims. Picksy aims to address this by publishing:
 
 - Objective, hands-on evaluations.
 - Real-world operational workflows and architecture considerations.
@@ -56,17 +68,17 @@ In Phase 1, Picksy establishes its core technical and editorial foundation witho
 
 The platform is engineered using modern, type-safe web technologies:
 
-| Layer                 | Technology                   | Specification / Role                                              |
-| --------------------- | ---------------------------- | ----------------------------------------------------------------- |
-| **Framework**         | Next.js 15                   | App Router, React Server Components (RSC), Edge Runtime           |
-| **Language**          | TypeScript 5                 | Strict mode enabled, zero `any` allowance, `@/*` aliases          |
-| **Styling**           | Tailwind CSS v4              | PostCSS integration, design system tokens, zero runtime CSS-in-JS |
-| **Components**        | Radix UI / Shadcn Principles | Accessible primitives, clean B2B aesthetic, mobile-first          |
-| **Icons**             | Lucide React                 | Lightweight, tree-shakable SVG icon system                        |
-| **Database (Future)** | Neon PostgreSQL              | Serverless PostgreSQL with connection pooling                     |
-| **ORM (Future)**      | Prisma ORM                   | Type-safe schema definition and migration blueprint               |
-| **Hosting**           | Vercel                       | Global edge caching, instant preview deployments                  |
-| **CI / CD**           | GitLab Auto DevOps           | Automated linting, testing, SAST, and container builds            |
+| Layer                 | Technology                   | Specification / Role                                               |
+| --------------------- | ---------------------------- | ------------------------------------------------------------------ |
+| **Framework**         | Next.js 15                   | App Router, React Server Components (RSC), Edge Runtime            |
+| **Language**          | TypeScript 5                 | Strict mode enabled, zero `any` allowance, `@/*` aliases           |
+| **Styling**           | Tailwind CSS v4              | PostCSS integration, design system tokens, zero runtime CSS-in-JS  |
+| **Components**        | Radix UI / Shadcn Principles | Accessible primitives, clean B2B aesthetic, mobile-first           |
+| **Icons**             | Lucide React                 | Lightweight, tree-shakable SVG icon system                         |
+| **Database (Future)** | Neon PostgreSQL              | Serverless PostgreSQL with connection pooling                      |
+| **ORM (Future)**      | Prisma ORM                   | Type-safe schema definition and migration blueprint                |
+| **Hosting**           | Vercel                       | Global edge caching, instant preview deployments                   |
+| **CI / CD**           | GitLab Auto DevOps           | Repository test override; inherited jobs require pipeline evidence |
 
 ---
 
@@ -76,7 +88,7 @@ The platform is engineered using modern, type-safe web technologies:
 
 Picksy strictly complies with GitLab Auto DevOps standards:
 
-- **Minimal Test Override:** `.gitlab-ci.yml` includes the standard Auto DevOps template and overrides only its legacy Herokuish test job so checks run on the project's required Node.js 22 runtime.
+- **Test Override:** `.gitlab-ci.yml` includes the standard Auto DevOps template and runs `npm ci`, `npm test`, and `npm run build` on Node.js 22.
 - **Standard Lifecycle Scripts:** `package.json` provides standard, predictable scripts (`build`, `start`, `lint`, `typecheck`).
 - **Cloud Native Buildpack Compatibility:** The repository adheres to standard Node.js project structures, enabling Auto DevOps to detect, build, test, and package the application automatically.
 - **Zero Secret Exposure:** All runtime environment configurations are injected at the platform level; no sensitive secrets or production credentials reside within the codebase.
@@ -108,7 +120,7 @@ chore(config): configure strict TypeScript and ESLint standards
 
 ### Prerequisites
 
-- **Node.js:** `>= 20.x` (Recommended: `22.x` via `.nvmrc`)
+- **Node.js:** `22.x` via `.nvmrc`
 - **Package Manager:** `npm` (or `pnpm`)
 
 ### Setup Instructions
@@ -161,9 +173,9 @@ npm run build
 ## Security Principles
 
 1. **Zero Hardcoded Secrets:** Credentials, database connection strings, and third-party tokens must never be committed. Always use `.env.example` as a sanitised guide.
-2. **Compliant External Links:** All outbound affiliate and external links are strictly rendered with `rel="noopener noreferrer"`.
-3. **FTC Compliance:** Clear, conspicuous affiliate disclosures are embedded natively in global layouts.
-4. **Supply Chain Protection:** Dependencies are kept minimal, pinned, and audited regularly via `npm audit`.
+2. **Affiliate Links:** Future published offers must use reviewed HTTPS destinations, adjacent disclosure, and sponsored link attributes.
+3. **Editorial Review:** Technical validation cannot replace verification of merchant authorization, sources, and legal wording.
+4. **Supply Chain Protection:** Dependencies are kept minimal and locked for clean CI installation; audit status requires separate evidence.
 
 ---
 
@@ -175,6 +187,6 @@ A task or Merge Request is considered **Done** only when:
 - [x] Zero TypeScript compilation errors (`npm run typecheck`).
 - [x] Zero ESLint warnings or errors (`npm run lint`).
 - [x] Successful production build generation (`npm run build`).
-- [x] Mobile responsiveness and WCAG contrast verified.
-- [x] Clean conventional commit history with descriptive messages.
-- [x] Merge Request description submitted with complete terminal verification evidence.
+- [ ] Mobile responsiveness and WCAG contrast verified in a browser.
+- [ ] Clean conventional commit history with descriptive messages.
+- [ ] Merge Request description submitted with complete terminal verification evidence.

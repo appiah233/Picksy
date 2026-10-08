@@ -4,8 +4,8 @@ export const siteConfig: SiteConfig = {
   name: "Picksy",
   tagline: "Helping businesses pick the right software with confidence.",
   description:
-    "Independent software recommendations, implementation insights, and practical comparisons for growing businesses.",
-  url: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+    "Picksy researches business software. Reviews appear here after their sources and claims are verified.",
+  url: process.env.NEXT_PUBLIC_APP_URL || "",
   categories: [
     {
       id: "crm-automation",
@@ -56,18 +56,18 @@ export const siteConfig: SiteConfig = {
     },
   ],
   mainNav: [
-    { title: "Categories", href: "#categories" },
-    { title: "Why Picksy", href: "#why-trust" },
-    { title: "Newsletter", href: "#newsletter" },
+    { title: "Categories", href: "/#categories" },
+    { title: "Why Picksy", href: "/#why-trust" },
+    { title: "Newsletter", href: "/#newsletter" },
   ],
   footerNav: [
     {
       title: "Navigation",
       items: [
         { title: "Home", href: "/" },
-        { title: "Categories", href: "#categories" },
-        { title: "Why Trust Picksy", href: "#why-trust" },
-        { title: "Newsletter", href: "#newsletter" },
+        { title: "Categories", href: "/#categories" },
+        { title: "Why Trust Picksy", href: "/#why-trust" },
+        { title: "Newsletter", href: "/#newsletter" },
       ],
     },
     {
@@ -83,7 +83,7 @@ export const siteConfig: SiteConfig = {
       items: [
         { title: "Privacy Policy", href: "#" },
         { title: "Terms of Service", href: "#" },
-        { title: "Affiliate Disclosure", href: "#disclosure" },
+        { title: "Affiliate Disclosure", href: "/#disclosure" },
         { title: "Editorial Guidelines", href: "#" },
       ],
     },

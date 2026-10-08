@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { siteConfig } from "@/config/site";
+import { getPublishedCategories, getPublishedProductsForCategory } from "@/lib/catalog";
 import {
   Workflow,
   Search,
@@ -22,30 +23,33 @@ const categoryIcons: Record<string, React.ReactNode> = {
 
 const trustPillars = [
   {
-    title: "Practical Guidance",
-    description:
-      "Actionable software evaluations designed for real operational workflows, not theoretical feature matrices.",
+    title: "Clear Scope",
+    description: "Each published review will state the workflow and audience it covers.",
   },
   {
-    title: "Real Implementation Experience",
+    title: "Evidence and Dates",
     description:
-      "Insights gathered from hands-on setup, migration hurdles, and practical team adoption across SaaS stacks.",
+      "Published findings will identify their sources, evaluation method, and review date.",
   },
   {
-    title: "Transparent Recommendations",
-    description:
-      "Clear, honest analysis highlighting both platform strengths and hard limitations without marketing spin.",
+    title: "Visible Limitations",
+    description: "Recommendations will describe who a product suits and where it falls short.",
   },
 ];
 
 export default function HomePage() {
+  const publishedCategories = new Map(
+    getPublishedCategories()
+      .filter((category) => getPublishedProductsForCategory(category.id).length > 0)
+      .map((category) => [category.id, category] as const)
+  );
   return (
     <div className="flex flex-col">
       {/* 1. Hero Section */}
       <section className="relative border-b border-zinc-200/80 bg-white px-4 py-20 sm:px-6 sm:py-28 lg:py-36">
         <div className="mx-auto max-w-4xl text-center">
           <div className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-medium text-zinc-600 mb-6">
-            <span>Independent SaaS Discovery & Evaluation</span>
+            <span>Software Discovery & Evaluation</span>
           </div>
 
           <h1 className="text-4xl font-extrabold tracking-tight text-zinc-950 sm:text-5xl lg:text-6xl leading-[1.15]">
@@ -53,8 +57,8 @@ export default function HomePage() {
           </h1>
 
           <p className="mx-auto mt-6 max-w-2xl text-lg text-zinc-600 leading-relaxed sm:text-xl">
-            Independent software recommendations, implementation insights, and practical comparisons
-            for growing businesses.
+            Picksy researches business software. Reviews appear here after their sources and claims
+            are verified. Explore our coverage areas below.
           </p>
 
           <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
@@ -82,41 +86,59 @@ export default function HomePage() {
       >
         <div className="mx-auto max-w-6xl">
           <div className="max-w-2xl">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+            <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
               Coverage Areas
-            </h2>
-            <p className="mt-2 text-3xl font-bold tracking-tight text-zinc-950 sm:text-4xl">
-              Software Categories We Evaluate
             </p>
+            <h2 className="mt-2 text-3xl font-bold tracking-tight text-zinc-950 sm:text-4xl">
+              Software Coverage Areas
+            </h2>
             <p className="mt-3 text-base text-zinc-600">
-              Deep, objective analysis across essential business software disciplines.
+              Reviewed categories link to published products. Other areas show planned coverage.
             </p>
           </div>
 
           <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {siteConfig.categories.map((category) => (
-              <div
-                key={category.id}
-                className="group relative flex flex-col justify-between rounded-xl border border-zinc-200 bg-white p-6 shadow-sm transition-all hover:border-zinc-300 hover:shadow-md"
-              >
-                <div>
-                  <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-zinc-100 bg-zinc-50">
-                    {categoryIcons[category.iconName] ?? (
-                      <Workflow className="h-6 w-6 text-zinc-800" />
-                    )}
+            {siteConfig.categories.map((category) => {
+              const publishedCategory = publishedCategories.get(category.id);
+              const isPublished = !!publishedCategory;
+              const content = (
+                <>
+                  <div>
+                    <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-zinc-100 bg-zinc-50">
+                      {categoryIcons[category.iconName] ?? (
+                        <Workflow className="h-6 w-6 text-zinc-800" />
+                      )}
+                    </div>
+                    <h3 className="mt-5 text-lg font-semibold text-zinc-950">
+                      {publishedCategory?.name ?? category.name}
+                    </h3>
+                    <p className="mt-2 text-sm text-zinc-600 leading-relaxed">
+                      {publishedCategory?.description ?? category.description}
+                    </p>
                   </div>
-                  <h3 className="mt-5 text-lg font-semibold text-zinc-950 group-hover:text-zinc-700 transition-colors">
-                    {category.name}
-                  </h3>
-                  <p className="mt-2 text-sm text-zinc-600 leading-relaxed">
-                    {category.description}
-                  </p>
-                </div>
-                <div className="mt-6 flex items-center text-xs font-medium text-zinc-400">
-                  <span>Guides & Reviews in Preparation</span>
-                </div>
-              </div>
-            ))}
+                  <div className="mt-6 flex items-center text-xs font-medium text-zinc-500">
+                    <span>
+                      {isPublished ? "Explore reviewed products" : "Coverage coming soon"}
+                    </span>
+                  </div>
+                </>
+              );
+              const cardClass =
+                "relative flex flex-col justify-between rounded-xl border border-zinc-200 bg-white p-6 shadow-sm";
+              return isPublished ? (
+                <Link
+                  key={category.id}
+                  href={`/categories/${publishedCategory.slug}`}
+                  className={`${cardClass} transition-colors hover:border-zinc-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2`}
+                >
+                  {content}
+                </Link>
+              ) : (
+                <article key={category.id} className={cardClass}>
+                  {content}
+                </article>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -128,14 +150,14 @@ export default function HomePage() {
       >
         <div className="mx-auto max-w-6xl">
           <div className="max-w-2xl">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+            <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
               Our Methodology
-            </h2>
-            <p className="mt-2 text-3xl font-bold tracking-tight text-zinc-950 sm:text-4xl">
-              Why Trust Picksy
             </p>
+            <h2 className="mt-2 text-3xl font-bold tracking-tight text-zinc-950 sm:text-4xl">
+              Picksy Review Standards
+            </h2>
             <p className="mt-3 text-base text-zinc-600">
-              How our editorial and technical evaluation process protects business leaders.
+              Standards applied to each review before it is published.
             </p>
           </div>
 
@@ -164,8 +186,8 @@ export default function HomePage() {
               Stay Ahead on Software Intelligence
             </h2>
             <p className="mt-3 text-sm text-zinc-600 sm:text-base">
-              Get unbiased comparisons, software teardowns, and implementation playbooks delivered
-              directly to your inbox.
+              We plan to share researched software reviews and practical guidance here as coverage
+              develops.
             </p>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-center">
@@ -188,7 +210,7 @@ export default function HomePage() {
               </button>
             </div>
             <p className="mt-3 text-xs text-zinc-400">
-              * Newsletter subscription integration is scheduled for Phase 2. Zero spam, ever.
+              Newsletter subscriptions are not available yet.
             </p>
           </div>
         </div>
