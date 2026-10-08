@@ -1,5 +1,9 @@
 # Picksy Architecture Specification
 
+> **Implementation status (Gate 2):** The live catalog uses typed, repository-managed records in `src/content/catalog.ts` behind `src/lib/catalog.ts`. It is intentionally empty until verified editorial and merchant inputs exist. Category and product routes are present but publish no pages from the empty catalog. MDX, Neon/Prisma, and ISR below describe possible future phases, not active integrations. The site remains `noindex` without a verified production origin. The explicit GitLab test override now runs `npm ci`, `npm test`, and `npm run build`; pipeline execution remains unverified.
+
+> **Publication boundary:** Published catalog categories own their displayed name, description, and slug; static site configuration supplies planned cards and icons. An offer selects one merchant-owned approved destination by stable ID. The destination record holds the exact HTTPS URL and authorization-evidence reference. One active offer per product is allowed. Code checks structure and binding; editorial and merchant authorization still require human verification. Review dates are UTC calendar dates and must be ordered and no later than the UTC build date.
+
 **Project:** Picksy  
 **Document Version:** 1.0.0  
 **Status:** Approved  
@@ -138,7 +142,7 @@ Security is built into the repository foundation from day zero:
 
 **GitLab Auto DevOps is the authoritative CI/CD platform.**
 
-- `.gitlab-ci.yml` includes the standard Auto DevOps template and overrides only the legacy Herokuish test job with the project's required Node.js 22 runtime. Build, security, and deployment jobs remain managed by Auto DevOps.
+- `.gitlab-ci.yml` includes the standard Auto DevOps template and overrides its test job with Node.js 22, `npm ci`, `npm test`, and `npm run build`. Inherited build, security, and deployment behavior requires GitLab pipeline evidence.
 - The project adheres to standard Node.js build conventions:
   - Standard `package.json` lifecycle scripts (`build`, `start`, `lint`).
   - Strict Node.js version declaration via `.nvmrc` and `engines` field in `package.json`.
