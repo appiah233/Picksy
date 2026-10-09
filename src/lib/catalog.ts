@@ -8,11 +8,5 @@ const taxonomyErrors = validateCategoryTaxonomy(catalogRecords, siteConfig.categ
 if (taxonomyErrors.length)
   throw new Error(`Invalid catalog taxonomy: ${taxonomyErrors.join("; ")}`);
 
-export const {
-  getPublishedCategories,
-  getPublishedCategoryBySlug,
-  getPublishedProductsForCategory,
-  getPublishedProductBySlug,
-  getPublishedReviewForProduct,
-  getActiveOfferForProduct,
-} = createCatalogAccess(catalogRecords);
+// The production accessor. It is built only from the production catalogue.
+export const catalog = createCatalogAccess(catalogRecords);

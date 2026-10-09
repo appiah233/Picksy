@@ -14,6 +14,23 @@ const eslintConfig = [
   {
     ignores: [".next/**", "out/**", "build/**", "next-env.d.ts", "node_modules/**"],
   },
+  {
+    // Application code must never depend on test code or test data.
+    files: ["src/**"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["**/tests", "**/tests/**"],
+              message: "Application code under src/ must not import from tests/.",
+            },
+          ],
+        },
+      ],
+    },
+  },
 ];
 
 export default eslintConfig;
