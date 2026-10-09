@@ -10,16 +10,16 @@ repository. Record stable references here for review; never commit agreements, c
 private contacts. An editor and an independent reviewer must identify the actual evidence, not
 infer it from a valid URL or a nonempty catalogue field.
 
-| Field | Required reviewable evidence | Catalogue mapping |
-| --- | --- | --- |
-| Merchant identity | Legal or affiliate-program identity, independently checked; relationship to the destination host | `Merchant.id`, `name`, `approvedHosts` |
-| Exact destination | Full HTTPS URL including path and query, stable destination ID, expected redirect chain, and intended landing page | `ApprovedDestination.id`, `url` |
-| Permission | Agreement or program record explicitly permitting Picksy's use of that exact destination; restrictions, effective dates, expiry, and any required affiliate parameters checked | Private evidence; `authorizationReference` points to it |
-| Product identity | Official product name, category fit, authoritative source URL, and source date | `Product` and `officialSource` |
-| Editorial review | Named author; actual UTC evaluation, publication, and review dates; method, audience, workflow, strengths, limitations, conclusion, and claim-by-claim support | `Review`, `Product` |
-| Provenance | Valid source URLs and a private evidence index linking factual claims to sources; editorial judgments identified as such | `Review.sources`; private evidence index |
-| Disclosure | Approved wording that truthfully describes the actual affiliate relationship and any program-specific requirements | `AffiliateOffer.disclosure` |
-| Production origin | Owner-selected HTTPS origin and hosting/deployment assumptions | Deployment configuration, reviewed separately |
+| Field             | Required reviewable evidence                                                                                                                                                   | Catalogue mapping                                       |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------- |
+| Merchant identity | Legal or affiliate-program identity, independently checked; relationship to the destination host                                                                               | `Merchant.id`, `name`, `approvedHosts`                  |
+| Exact destination | Full HTTPS URL including path and query, stable destination ID, expected redirect chain, and intended landing page                                                             | `ApprovedDestination.id`, `url`                         |
+| Permission        | Agreement or program record explicitly permitting Picksy's use of that exact destination; restrictions, effective dates, expiry, and any required affiliate parameters checked | Private evidence; `authorizationReference` points to it |
+| Product identity  | Official product name, category fit, authoritative source URL, and source date                                                                                                 | `Product` and `officialSource`                          |
+| Editorial review  | Named author; actual UTC evaluation, publication, and review dates; method, audience, workflow, strengths, limitations, conclusion, and claim-by-claim support                 | `Review`, `Product`                                     |
+| Provenance        | Valid source URLs and a private evidence index linking factual claims to sources; editorial judgments identified as such                                                       | `Review.sources`; private evidence index                |
+| Disclosure        | Approved wording that truthfully describes the actual affiliate relationship and any program-specific requirements                                                             | `AffiliateOffer.disclosure`                             |
+| Production origin | Owner-selected HTTPS origin and hosting/deployment assumptions                                                                                                                 | Deployment configuration, reviewed separately           |
 
 The catalogue model already represents the public editorial content and a stable reference to
 merchant authorization. It does not need to store private agreements, claim worksheets, or a
