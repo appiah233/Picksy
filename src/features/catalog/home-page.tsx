@@ -212,7 +212,7 @@ export function renderHomePage(catalog: CatalogAccess) {
                 Subscribe (Soon)
               </button>
             </div>
-            <p className="mt-3 text-xs text-zinc-400">
+            <p className="mt-3 text-xs text-zinc-600">
               Newsletter subscriptions are not available yet.
             </p>
           </div>

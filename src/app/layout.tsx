@@ -92,7 +92,7 @@ export default function RootLayout({
                     {column.items.map((item) => (
                       <li key={item.title}>
                         {item.disabled || item.href === "#" ? (
-                          <span className="text-zinc-400">{item.title}</span>
+                          <span className="text-zinc-600">{item.title}</span>
                         ) : (
                           <Link
                             href={item.href}
@@ -117,7 +117,7 @@ export default function RootLayout({
               you purchase through it. Any such link has a disclosure beside it.
             </div>
 
-            <div className="mt-8 border-t border-zinc-100 pt-6 text-center text-xs text-zinc-400">
+            <div className="mt-8 border-t border-zinc-100 pt-6 text-center text-xs text-zinc-600">
               © {new Date().getFullYear()} Picksy. All rights reserved.
             </div>
           </div>
