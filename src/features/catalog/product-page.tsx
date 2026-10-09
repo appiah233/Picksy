@@ -31,7 +31,7 @@ export function renderProductPage(catalog: CatalogAccess, slug: string) {
   const destination = catalog.getActiveOfferForProduct(product.id);
 
   return (
-    <article className="mx-auto max-w-4xl px-4 py-12 sm:px-6 sm:py-16">
+    <article className="mx-auto max-w-4xl px-4 py-12 [overflow-wrap:anywhere] sm:px-6 sm:py-16">
       <nav aria-label="Breadcrumb" className="text-sm text-zinc-600">
         <Link
           href="/"
@@ -137,10 +137,11 @@ export function renderProductPage(catalog: CatalogAccess, slug: string) {
               href={destination.destination.url}
               rel="sponsored noopener noreferrer"
               target="_blank"
-              className="mt-5 inline-flex min-h-11 items-center rounded-md bg-zinc-950 px-5 py-3 font-medium text-white hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2"
+              className="mt-5 inline-flex min-h-11 max-w-full items-center rounded-md bg-zinc-950 px-5 py-3 text-center font-medium text-white [overflow-wrap:anywhere] hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2"
             >
               {destination.offer.label}
             </a>
+            <p className="mt-2 text-xs text-zinc-600">Opens merchant website in a new tab.</p>
           </aside>
         )}
       </div>

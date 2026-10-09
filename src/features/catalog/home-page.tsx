@@ -127,7 +127,7 @@ export function renderHomePage(catalog: CatalogAccess) {
                 </>
               );
               const cardClass =
-                "relative flex flex-col justify-between rounded-xl border border-zinc-200 bg-white p-6 shadow-sm";
+                "relative flex min-w-0 flex-col justify-between rounded-xl border border-zinc-200 bg-white p-6 shadow-sm [overflow-wrap:anywhere]";
               return isPublished ? (
                 <Link
                   key={category.id}

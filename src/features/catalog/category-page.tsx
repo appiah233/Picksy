@@ -22,7 +22,7 @@ export function renderCategoryPage(catalog: CatalogAccess, slug: string) {
   const products = catalog.getPublishedProductsForCategory(category.id);
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
+    <div className="mx-auto max-w-6xl px-4 py-12 [overflow-wrap:anywhere] sm:px-6 sm:py-16">
       <nav aria-label="Breadcrumb" className="text-sm text-zinc-600">
         <Link
           href="/"

@@ -167,6 +167,7 @@ test("merchant CTA renders the exact approved destination with the required link
   assert.equal(cta.rel, "sponsored noopener noreferrer");
   assert.equal(cta.text, `Visit ${SYNTHETIC_MARKER} Merchant One`);
   assert.match(product, /<aside[^>]*aria-label="Merchant offer"/);
+  assert.match(product, /Opens merchant website in a new tab\./);
 });
 
 test("disclosure renders inside the offer, before the CTA", () => {
