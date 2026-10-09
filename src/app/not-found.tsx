@@ -7,7 +7,7 @@ export default function NotFound() {
       <p className="mt-4 text-zinc-600">This page is unavailable or has not been published yet.</p>
       <Link
         href="/"
-        className="mt-8 inline-flex min-h-11 items-center rounded-md bg-zinc-950 px-5 py-3 font-medium text-white hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2"
+        className="mt-8 inline-flex min-h-11 items-center rounded-md bg-zinc-950 px-5 py-3 font-medium text-white hover:bg-zinc-800 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2"
       >
         Return to Picksy home
       </Link>

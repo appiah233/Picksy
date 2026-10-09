@@ -35,7 +35,7 @@ export function renderProductPage(catalog: CatalogAccess, slug: string) {
       <nav aria-label="Breadcrumb" className="text-sm text-zinc-600">
         <Link
           href="/"
-          className="rounded-sm underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950"
+          className="rounded-sm underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-zinc-950"
         >
           Home
         </Link>
@@ -44,7 +44,7 @@ export function renderProductPage(catalog: CatalogAccess, slug: string) {
         </span>
         <Link
           href={`/categories/${category.slug}`}
-          className="rounded-sm underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950"
+          className="rounded-sm underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-zinc-950"
         >
           {category.name}
         </Link>
@@ -90,7 +90,7 @@ export function renderProductPage(catalog: CatalogAccess, slug: string) {
                   href={source}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="break-all rounded-sm underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2"
+                  className="rounded-sm underline underline-offset-2 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2"
                 >
                   Source {index + 1}: {new URL(source).hostname} (opens in a new tab)
                 </a>
@@ -138,7 +138,7 @@ export function renderProductPage(catalog: CatalogAccess, slug: string) {
               rel="sponsored noopener noreferrer"
               target="_blank"
               aria-describedby="merchant-new-tab-note"
-              className="mt-5 inline-flex min-h-11 max-w-full items-center rounded-md bg-zinc-950 px-5 py-3 text-center font-medium text-white [overflow-wrap:anywhere] hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2"
+              className="mt-5 inline-flex min-h-11 max-w-full items-center rounded-md bg-zinc-950 px-5 py-3 text-center font-medium text-white [overflow-wrap:anywhere] hover:bg-zinc-800 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2"
             >
               {destination.offer.label}
             </a>
