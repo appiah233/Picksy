@@ -60,12 +60,22 @@ function activeOffer(records: CatalogRecords, productId: string): ResolvedOffer 
 
 const validatedAccessors = new WeakSet<object>();
 
+function freezeCatalog(value: object, seen = new WeakSet<object>()): void {
+  if (seen.has(value)) return;
+  seen.add(value);
+  for (const child of Object.values(value)) {
+    if (child !== null && typeof child === "object") freezeCatalog(child, seen);
+  }
+  Object.freeze(value);
+}
+
 export function createCatalogAccess(source: CatalogRecords) {
-  // Validate and serve a private copy, so later changes to the caller's records cannot reach a
-  // page without passing validation.
+  // Validate and freeze a private copy. Neither the caller's records nor objects returned by
+  // accessors can change page content after validation.
   const records = structuredClone(source);
   const errors = validateCatalog(records);
   if (errors.length) throw new Error(`Invalid catalog: ${errors.join("; ")}`);
+  freezeCatalog(records);
   const categories = (): Category[] =>
     records.categories.filter((category) => category.state === "published");
   const access = Object.freeze({
