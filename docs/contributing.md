@@ -125,7 +125,18 @@ Every pull/merge request is evaluated against:
 
 ---
 
-## 6. Definition of Done (DoD)
+## 6. Reporting Bugs
+
+Bugs are tracked in [GitLab Issues](https://gitlab.com/appiah233/picksy/-/issues).
+
+1. Create a new issue and choose the **Bug** template from the description dropdown.
+2. Fill in every section; reproduction steps and evidence are required for triage.
+3. The project is public: never include credentials, tokens, or personal data. Mark security vulnerabilities as confidential.
+4. Reference the issue from the fix, e.g. `Closes #123` in the Merge Request description, so it closes on merge.
+
+---
+
+## 7. Definition of Done (DoD)
 
 A task or feature is considered **Done** only when:
 
