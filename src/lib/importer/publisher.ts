@@ -9,6 +9,7 @@ import type {
 import { validateCatalog } from "../catalog-validation.ts";
 import type {
   EditorialReviewInput,
+  ImportDraft,
   ImporterErrorCode,
   ProductImportCandidate,
 } from "../importer-types.ts";
@@ -37,43 +38,60 @@ export interface PublishOptions {
   today?: string;
 }
 
-/**
- * Validates editorial review input, synthesizes catalog records,
- * and validates the entire catalog with validateCatalog before publishing.
- */
-export async function publishImportDraft(
+type DraftCheck =
+  | { ok: true; draft: ImportDraft }
+  | { ok: false; result: PublishResult };
+
+type PublicationPreparation =
+  | { ok: true; productId: string }
+  | { ok: false; result: PublishResult };
+
+async function getPublishableDraft(
   draftId: string,
-  version: number,
-  editorialReview: EditorialReviewInput,
-  options?: PublishOptions
-): Promise<PublishResult> {
+  version: number
+): Promise<DraftCheck> {
   const draft = await draftStore.getDraft(draftId);
   if (!draft) {
     return {
       ok: false,
-      code: "VALIDATION_FAILED",
-      message: `Draft with ID "${draftId}" not found.`,
+      result: {
+        ok: false,
+        code: "VALIDATION_FAILED",
+        message: `Draft with ID "${draftId}" not found.`,
+      },
     };
   }
 
-  // Optimistic concurrency check
   if (draft.version !== version) {
     return {
       ok: false,
-      code: "CONFLICT",
-      message: `Version conflict: Draft is at version ${draft.version}, but version ${version} was supplied.`,
+      result: {
+        ok: false,
+        code: "CONFLICT",
+        message: `Version conflict: Draft is at version ${draft.version}, but version ${version} was supplied.`,
+      },
     };
   }
 
   if (draft.state === "published") {
     return {
       ok: false,
-      code: "VALIDATION_FAILED",
-      message: `Draft "${draftId}" is already published.`,
+      result: {
+        ok: false,
+        code: "VALIDATION_FAILED",
+        message: `Draft "${draftId}" is already published.`,
+      },
     };
   }
 
-  // Merge candidate with edits
+  return { ok: true, draft };
+}
+
+function preparePublication(
+  draft: ImportDraft,
+  editorialReview: EditorialReviewInput,
+  options?: PublishOptions
+): PublicationPreparation {
   const merged: ProductImportCandidate = {
     ...draft.candidate,
     ...draft.edits,
@@ -82,9 +100,12 @@ export async function publishImportDraft(
   if (!merged.categoryId) {
     return {
       ok: false,
-      code: "VALIDATION_FAILED",
-      message: "Publication requires a category assignment.",
-      errors: ["Category is required for publication"],
+      result: {
+        ok: false,
+        code: "VALIDATION_FAILED",
+        message: "Publication requires a category assignment.",
+        errors: ["Category is required for publication"],
+      },
     };
   }
 
@@ -95,7 +116,6 @@ export async function publishImportDraft(
     merchants: [],
     offers: [],
   };
-
   const productId = merged.slug;
 
   // Store the canonical URL string that the browser will request. The catalogue
@@ -108,9 +128,12 @@ export async function publishImportDraft(
   } catch {
     return {
       ok: false,
-      code: "VALIDATION_FAILED",
-      message: "Publication requires a valid destination URL.",
-      errors: ["Destination URL is invalid"],
+      result: {
+        ok: false,
+        code: "VALIDATION_FAILED",
+        message: "Publication requires a valid destination URL.",
+        errors: ["Destination URL is invalid"],
+      },
     };
   }
 
@@ -146,12 +169,11 @@ export async function publishImportDraft(
   try {
     merchantHost = new URL(destinationUrl).hostname.toLowerCase();
   } catch {
-    // fallback host
+    // The destination URL was already parsed above; retain the defensive fallback.
   }
 
   const merchantId = `merchant-${merged.slug}`;
   const destinationId = `dest-${merged.slug}`;
-
   const merchant: Merchant = {
     id: merchantId,
     name: merged.merchantName,
@@ -182,42 +204,54 @@ export async function publishImportDraft(
     merchants: [...baseCatalog.merchants, merchant],
     offers: [...baseCatalog.offers, offer],
   };
-
   const today = options?.today ?? new Date().toISOString().slice(0, 10);
   const validationErrors = validateCatalog(candidateCatalog, today);
 
   if (validationErrors.length > 0) {
     return {
       ok: false,
-      code: "VALIDATION_FAILED",
-      message: `Catalog validation failed: ${validationErrors.join("; ")}`,
-      errors: validationErrors,
+      result: {
+        ok: false,
+        code: "VALIDATION_FAILED",
+        message: `Catalog validation failed: ${validationErrors.join("; ")}`,
+        errors: validationErrors,
+      },
     };
   }
 
-  // Publication passed! Update draft state to published
+  return { ok: true, productId };
+}
+
+/**
+ * Validates editorial review input, synthesizes catalog records,
+ * and validates the entire catalog with validateCatalog before publishing.
+ */
+export async function publishImportDraft(
+  draftId: string,
+  version: number,
+  editorialReview: EditorialReviewInput,
+  options?: PublishOptions
+): Promise<PublishResult> {
+  const draftCheck = await getPublishableDraft(draftId, version);
+  if (!draftCheck.ok) return draftCheck.result;
+
+  const preparation = preparePublication(draftCheck.draft, editorialReview, options);
+  if (!preparation.ok) return preparation.result;
+
+  // Publication passed; update the draft with the same optimistic version guard.
   const updateResult = await draftStore.updateDraft(
     draftId,
-    {
-      ...draft.edits,
-    },
+    { ...draftCheck.draft.edits },
     version
   );
+  const result: PublishResult = updateResult.ok && updateResult.draft
+    ? { ok: true, productId: preparation.productId, state: "published" }
+    : {
+        ok: false,
+        code: updateResult.code ?? "CONFLICT",
+        message: updateResult.message ?? "Failed to finalize publication state.",
+      };
 
-  if (!updateResult.ok || !updateResult.draft) {
-    return {
-      ok: false,
-      code: updateResult.code ?? "CONFLICT",
-      message: updateResult.message ?? "Failed to finalize publication state.",
-    };
-  }
-
-  // Set draft state = published
-  updateResult.draft.state = "published";
-
-  return {
-    ok: true,
-    productId,
-    state: "published",
-  };
+  if (result.ok && updateResult.draft) updateResult.draft.state = "published";
+  return result;
 }
