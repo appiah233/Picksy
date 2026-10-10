@@ -148,3 +148,7 @@ export async function collectPipeline({ gitlab, mergeRequest, sha }) {
     })),
   };
 }
+
+export function pipelineHasFinished(pipeline) {
+  return pipeline.state === "found" && ["success", "failed", "canceled", "skipped"].includes(pipeline.status);
+}

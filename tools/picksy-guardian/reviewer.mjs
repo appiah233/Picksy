@@ -1,4 +1,4 @@
-import { collectContext, collectPipeline } from "./context.mjs";
+import { collectContext, collectPipeline, pipelineHasFinished } from "./context.mjs";
 import { reviewWithOpenAi } from "./openai.mjs";
 import { evaluatePolicy } from "./policy-engine.mjs";
 import { decide, formatReview, parseMarker, reviewKey } from "./report.mjs";
@@ -26,6 +26,9 @@ async function findOwnNote({ gitlab, iid, projectId }) {
 export async function reviewMergeRequest({ iid, config, policy, gitlab, fetchImpl }) {
   const mergeRequest = await gitlab.getMergeRequest(iid);
   if (mergeRequest.state !== "opened") return { action: "skipped", reason: "not_open" };
+  if (mergeRequest.target_branch !== "main") {
+    return { action: "skipped", reason: "wrong_target_branch" };
+  }
   const sha = mergeRequest.sha;
   if (typeof sha !== "string" || !SHA.test(sha)) {
     return { action: "skipped", reason: "no_revision" };
@@ -42,15 +45,19 @@ export async function reviewMergeRequest({ iid, config, policy, gitlab, fetchImp
     return { action: "skipped", reason: "already_reviewed", sha };
   }
 
-  const context = await collectContext({ gitlab, iid, policy });
-  const catalogueSource = await gitlab.getFileAtRef(policy.paths.productionCatalogue, sha);
   let pipeline;
   try {
     pipeline = await collectPipeline({ gitlab, mergeRequest, sha });
   } catch (error) {
     if (!(error instanceof GuardianError)) throw error;
-    pipeline = { state: "unavailable" };
+    return { action: "skipped", reason: "pipeline_unavailable", sha };
   }
+  if (!pipelineHasFinished(pipeline)) {
+    return { action: "skipped", reason: "pipeline_not_finished", sha };
+  }
+
+  const context = await collectContext({ gitlab, iid, policy });
+  const catalogueSource = await gitlab.getFileAtRef(policy.paths.productionCatalogue, sha);
 
   const policyFindings = evaluatePolicy({
     policy,

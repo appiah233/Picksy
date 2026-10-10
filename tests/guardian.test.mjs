@@ -70,7 +70,7 @@ function createWorld(overrides = {}) {
       title: "docs: clarify setup",
       description: "Small documentation change.",
       source_branch: "feature/docs",
-      target_branch: "develop",
+      target_branch: "main",
       head_pipeline: { id: 55, sha: SHA_A, status: "success" },
     },
     diffs: [change("README.md", ["A clearer sentence."])],
@@ -157,6 +157,17 @@ const eventPayload = (overrides = {}) => ({
     action: "update",
     state: "opened",
     target_project_id: PROJECT,
+    target_branch: "main",
+    ...overrides,
+  },
+});
+
+const pipelineEventPayload = (overrides = {}) => ({
+  object_kind: "pipeline",
+  project: { id: PROJECT, path_with_namespace: "group/picksy" },
+  object_attributes: {
+    status: "success",
+    merge_request: { iid: IID },
     ...overrides,
   },
 });
@@ -216,6 +227,36 @@ test("authentic webhook triggers a review and one Guardian comment", async () =>
     { projectId: PROJECT, iid: IID, sha: SHA_A, status: "PASS" }
   );
   assert.equal(marker.policyVersion, policy.version);
+});
+
+test("non-main Merge Requests are ignored", async () => {
+  const world = createWorld();
+  world.mergeRequest.target_branch = "develop";
+  await withServer(world, async ({ deliver }) => {
+    const response = await deliver(eventPayload({ target_branch: "develop" }));
+    assert.equal(response.status, 200);
+    assert.equal(response.body.reason, "wrong_target_branch");
+  });
+  assert.equal(world.notes.length, 0);
+});
+
+test("a Merge Request is not reviewed until its pipeline finishes", async () => {
+  const world = createWorld();
+  world.mergeRequest.head_pipeline.status = "running";
+  await withServer(world, async ({ deliver }) => {
+    const response = await deliver(eventPayload());
+    assert.equal(response.status, 202);
+  });
+  assert.equal(world.notes.length, 0);
+});
+
+test("a completed Pipeline Hook triggers the main Merge Request review", async () => {
+  const world = createWorld();
+  await withServer(world, async ({ deliver }) => {
+    const response = await deliver(pipelineEventPayload(), { event: "Pipeline Hook" });
+    assert.equal(response.status, 202);
+  });
+  assert.equal(world.notes.length, 1);
 });
 
 test("invalid signature, tampered body and stale timestamp are rejected", async () => {
@@ -356,6 +397,7 @@ test("Guardian never mutates the repository or the Merge Request", async () => {
   const world = createWorld();
   await world.review();
   world.mergeRequest.sha = SHA_B;
+  world.mergeRequest.head_pipeline.sha = SHA_B;
   await world.review();
   const writes = world.requests.filter((request) => request.method !== "GET");
   assert.equal(writes.length, 2);
@@ -451,8 +493,12 @@ test("pipeline evidence is reported for the reviewed revision only", async () =>
 
   const stale = createWorld();
   stale.mergeRequest.head_pipeline.sha = SHA_B;
-  assert.equal((await stale.review()).status, "WARN");
-  assert.match(stale.notes[0].body, /G-PIPELINE-001/);
+  assert.deepEqual(await stale.review(), {
+    action: "skipped",
+    reason: "pipeline_not_finished",
+    sha: SHA_A,
+  });
+  assert.equal(stale.notes.length, 0);
 
   const skipped = createWorld({ jobs: [{ name: "test", status: "skipped" }] });
   await skipped.review();
