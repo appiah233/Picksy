@@ -31,11 +31,11 @@ export function renderProductPage(catalog: CatalogAccess, slug: string) {
   const destination = catalog.getActiveOfferForProduct(product.id);
 
   return (
-    <article className="mx-auto max-w-4xl px-4 py-12 sm:px-6 sm:py-16">
+    <article className="mx-auto max-w-4xl px-4 py-12 [overflow-wrap:anywhere] sm:px-6 sm:py-16">
       <nav aria-label="Breadcrumb" className="text-sm text-zinc-600">
         <Link
           href="/"
-          className="rounded-sm underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950"
+          className="rounded-sm underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-zinc-950"
         >
           Home
         </Link>
@@ -44,7 +44,7 @@ export function renderProductPage(catalog: CatalogAccess, slug: string) {
         </span>
         <Link
           href={`/categories/${category.slug}`}
-          className="rounded-sm underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950"
+          className="rounded-sm underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-zinc-950"
         >
           {category.name}
         </Link>
@@ -90,7 +90,7 @@ export function renderProductPage(catalog: CatalogAccess, slug: string) {
                   href={source}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="break-all rounded-sm underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2"
+                  className="rounded-sm underline underline-offset-2 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2"
                 >
                   Source {index + 1}: {new URL(source).hostname} (opens in a new tab)
                 </a>
@@ -137,10 +137,14 @@ export function renderProductPage(catalog: CatalogAccess, slug: string) {
               href={destination.destination.url}
               rel="sponsored noopener noreferrer"
               target="_blank"
-              className="mt-5 inline-flex min-h-11 items-center rounded-md bg-zinc-950 px-5 py-3 font-medium text-white hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2"
+              aria-describedby="merchant-new-tab-note"
+              className="mt-5 inline-flex min-h-11 max-w-full items-center rounded-md bg-zinc-950 px-5 py-3 text-center font-medium text-white [overflow-wrap:anywhere] hover:bg-zinc-800 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2"
             >
               {destination.offer.label}
             </a>
+            <p id="merchant-new-tab-note" className="mt-2 text-xs text-zinc-600">
+              Opens merchant website in a new tab.
+            </p>
           </aside>
         )}
       </div>

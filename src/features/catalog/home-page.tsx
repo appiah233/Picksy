@@ -67,14 +67,14 @@ export function renderHomePage(catalog: CatalogAccess) {
           <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
             <Link
               href="#categories"
-              className="inline-flex items-center justify-center rounded-md bg-zinc-950 px-5 py-3 text-sm font-medium text-white shadow-sm transition-colors hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-950 focus:ring-offset-2"
+              className="inline-flex items-center justify-center rounded-md bg-zinc-950 px-5 py-3 text-sm font-medium text-white shadow-sm transition-colors hover:bg-zinc-800 focus:outline-hidden focus:ring-2 focus:ring-zinc-950 focus:ring-offset-2"
             >
               Explore Categories
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
             <Link
               href="#why-trust"
-              className="inline-flex items-center justify-center rounded-md border border-zinc-200 bg-white px-5 py-3 text-sm font-medium text-zinc-900 shadow-sm transition-colors hover:bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-zinc-950 focus:ring-offset-2"
+              className="inline-flex items-center justify-center rounded-md border border-zinc-200 bg-white px-5 py-3 text-sm font-medium text-zinc-900 shadow-sm transition-colors hover:bg-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-zinc-950 focus:ring-offset-2"
             >
               Why Trust Picksy
             </Link>
@@ -127,12 +127,12 @@ export function renderHomePage(catalog: CatalogAccess) {
                 </>
               );
               const cardClass =
-                "relative flex flex-col justify-between rounded-xl border border-zinc-200 bg-white p-6 shadow-sm";
+                "relative flex min-w-0 flex-col justify-between rounded-xl border border-zinc-200 bg-white p-6 shadow-sm [overflow-wrap:anywhere]";
               return isPublished ? (
                 <Link
                   key={category.id}
                   href={`/categories/${publishedCategory.slug}`}
-                  className={`${cardClass} transition-colors hover:border-zinc-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2`}
+                  className={`${cardClass} transition-colors hover:border-zinc-400 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2`}
                 >
                   {content}
                 </Link>
@@ -202,7 +202,7 @@ export function renderHomePage(catalog: CatalogAccess) {
                 type="email"
                 disabled
                 placeholder="Enter your business email"
-                className="w-full rounded-md border border-zinc-300 bg-zinc-50 px-4 py-2.5 text-sm text-zinc-700 placeholder-zinc-400 focus:outline-none sm:w-80 cursor-not-allowed opacity-75"
+                className="w-full rounded-md border border-zinc-300 bg-zinc-50 px-4 py-2.5 text-sm text-zinc-700 placeholder-zinc-400 focus:outline-hidden sm:w-80 cursor-not-allowed opacity-75"
               />
               <button
                 type="button"
@@ -212,7 +212,7 @@ export function renderHomePage(catalog: CatalogAccess) {
                 Subscribe (Soon)
               </button>
             </div>
-            <p className="mt-3 text-xs text-zinc-400">
+            <p className="mt-3 text-xs text-zinc-600">
               Newsletter subscriptions are not available yet.
             </p>
           </div>

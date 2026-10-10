@@ -34,11 +34,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="scroll-smooth">
+    <html lang="en" className="scroll-pt-24 motion-safe:scroll-smooth">
       <body className="min-h-screen flex flex-col bg-[#fcfcfd] text-zinc-900 antialiased selection:bg-zinc-200">
         <a
           href="#main-content"
-          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-white focus:p-3 focus:outline-none focus:ring-2 focus:ring-zinc-950"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-white focus:p-3 focus:outline-hidden focus:ring-2 focus:ring-zinc-950"
         >
           Skip to main content
         </a>
@@ -46,7 +46,7 @@ export default function RootLayout({
           <div className="mx-auto flex min-h-16 max-w-6xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3 sm:px-6">
             <Link
               href="/"
-              className="flex items-center space-x-2 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2"
+              className="flex items-center space-x-2 rounded-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2"
             >
               <span className="text-xl font-bold tracking-tight text-zinc-950">
                 Picksy<span className="text-zinc-400">.</span>
@@ -60,7 +60,7 @@ export default function RootLayout({
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="rounded-sm transition-colors hover:text-zinc-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2"
+                  className="rounded-sm transition-colors hover:text-zinc-950 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2"
                 >
                   {item.title}
                 </Link>
@@ -92,11 +92,11 @@ export default function RootLayout({
                     {column.items.map((item) => (
                       <li key={item.title}>
                         {item.disabled || item.href === "#" ? (
-                          <span className="text-zinc-400">{item.title}</span>
+                          <span className="text-zinc-600">{item.title}</span>
                         ) : (
                           <Link
                             href={item.href}
-                            className="rounded-sm transition-colors hover:text-zinc-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2"
+                            className="rounded-sm transition-colors hover:text-zinc-950 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2"
                           >
                             {item.title}
                           </Link>
@@ -117,7 +117,7 @@ export default function RootLayout({
               you purchase through it. Any such link has a disclosure beside it.
             </div>
 
-            <div className="mt-8 border-t border-zinc-100 pt-6 text-center text-xs text-zinc-400">
+            <div className="mt-8 border-t border-zinc-100 pt-6 text-center text-xs text-zinc-600">
               © {new Date().getFullYear()} Picksy. All rights reserved.
             </div>
           </div>
