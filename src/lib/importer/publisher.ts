@@ -9,6 +9,7 @@ import type {
 import { validateCatalog } from "../catalog-validation.ts";
 import type {
   EditorialReviewInput,
+  ImportDraft,
   ImporterErrorCode,
   ProductImportCandidate,
 } from "../importer-types.ts";
@@ -37,71 +38,62 @@ export interface PublishOptions {
   today?: string;
 }
 
-/**
- * Validates editorial review input, synthesizes catalog records,
- * and validates the entire catalog with validateCatalog before publishing.
- */
-export async function publishImportDraft(
-  draftId: string,
-  version: number,
-  editorialReview: EditorialReviewInput,
-  options?: PublishOptions
-): Promise<PublishResult> {
-  const draft = await draftStore.getDraft(draftId);
-  if (!draft) {
-    return {
-      ok: false,
-      code: "VALIDATION_FAILED",
-      message: `Draft with ID "${draftId}" not found.`,
-    };
-  }
+type DraftCheck =
+  | { ok: true; draft: ImportDraft }
+  | { ok: false; result: PublishResult };
 
-  // Optimistic concurrency check
+type PublicationPreparation =
+  | { ok: true; productId: string }
+  | { ok: false; result: PublishResult };
+
+function publicationFailure(
+  message: string,
+  code: ImporterErrorCode = "VALIDATION_FAILED",
+  errors?: string[]
+): PublishResult {
+  return { ok: false, code, message, ...(errors ? { errors } : {}) };
+}
+
+function draftProblem(draft: ImportDraft | null, draftId: string, version: number): PublishResult | null {
+  if (!draft) return publicationFailure(`Draft with ID "${draftId}" not found.`);
   if (draft.version !== version) {
-    return {
-      ok: false,
-      code: "CONFLICT",
-      message: `Version conflict: Draft is at version ${draft.version}, but version ${version} was supplied.`,
-    };
+    return publicationFailure(
+      `Version conflict: Draft is at version ${draft.version}, but version ${version} was supplied.`,
+      "CONFLICT"
+    );
   }
-
   if (draft.state === "published") {
-    return {
-      ok: false,
-      code: "VALIDATION_FAILED",
-      message: `Draft "${draftId}" is already published.`,
-    };
+    return publicationFailure(`Draft "${draftId}" is already published.`);
   }
+  return null;
+}
 
-  // Merge candidate with edits
-  const merged: ProductImportCandidate = {
-    ...draft.candidate,
-    ...draft.edits,
-  };
+async function getPublishableDraft(
+  draftId: string,
+  version: number
+): Promise<DraftCheck> {
+  const draft = await draftStore.getDraft(draftId);
+  const problem = draftProblem(draft, draftId, version);
+  return problem ? { ok: false, result: problem } : { ok: true, draft: draft! };
+}
 
-  if (!merged.categoryId) {
-    return {
-      ok: false,
-      code: "VALIDATION_FAILED",
-      message: "Publication requires a category assignment.",
-      errors: ["Category is required for publication"],
-    };
+function canonicalDestinationUrl(value: string): string | null {
+  // Store the canonical URL string that the browser will request. The catalogue
+  // validator deliberately rejects destinations whose stored string differs
+  // from URL.href, so a valid bare host such as https://example.com must be
+  // normalized before it is recorded as the approved destination.
+  try {
+    return new URL(value).href;
+  } catch {
+    return null;
   }
+}
 
-  const baseCatalog: CatalogRecords = options?.catalogRecords ?? {
-    categories: [...DEFAULT_CATEGORIES],
-    products: [],
-    reviews: [],
-    merchants: [],
-    offers: [],
-  };
-
-  const productId = merged.slug;
-
-  const product: Product = {
-    id: productId,
+function makeProduct(merged: ProductImportCandidate, categoryId: string): Product {
+  return {
+    id: merged.slug,
     slug: merged.slug,
-    categoryId: merged.categoryId,
+    categoryId,
     name: merged.name,
     officialSource: merged.officialSource || merged.canonicalUrl,
     summary: merged.summary,
@@ -109,8 +101,10 @@ export async function publishImportDraft(
     intendedWorkflow: merged.intendedWorkflow,
     state: "published",
   };
+}
 
-  const review: Review = {
+function makeReview(productId: string, editorialReview: EditorialReviewInput): Review {
+  return {
     productId,
     author: editorialReview.author,
     evaluatedOn: editorialReview.evaluatedOn,
@@ -125,83 +119,119 @@ export async function publishImportDraft(
     conclusion: editorialReview.conclusion,
     state: "published",
   };
+}
 
-  let merchantHost = "merchant.example";
-  try {
-    merchantHost = new URL(merged.destinationUrl).hostname.toLowerCase();
-  } catch {
-    // fallback host
-  }
-
+function makeMerchant(
+  merged: ProductImportCandidate,
+  destinationUrl: string,
+  authorizationReference: string
+): Merchant {
   const merchantId = `merchant-${merged.slug}`;
   const destinationId = `dest-${merged.slug}`;
-
-  const merchant: Merchant = {
+  return {
     id: merchantId,
     name: merged.merchantName,
-    approvedHosts: [merchantHost],
+    approvedHosts: [new URL(destinationUrl).hostname.toLowerCase()],
     approvedDestinations: [
       {
         id: destinationId,
-        url: merged.destinationUrl,
-        authorizationReference: editorialReview.authorizationReference,
+        url: destinationUrl,
+        authorizationReference,
       },
     ],
   };
+}
 
-  const offer: AffiliateOffer = {
+function makeOffer(merged: ProductImportCandidate, editorialReview: EditorialReviewInput): AffiliateOffer {
+  return {
     id: `offer-${merged.slug}`,
-    productId,
-    merchantId,
-    approvedDestinationId: destinationId,
+    productId: merged.slug,
+    merchantId: `merchant-${merged.slug}`,
+    approvedDestinationId: `dest-${merged.slug}`,
     label: editorialReview.offerLabel,
     disclosure: editorialReview.disclosure,
     state: "active",
   };
+}
 
-  const candidateCatalog: CatalogRecords = {
+function makeCandidateCatalog(
+  baseCatalog: CatalogRecords,
+  merged: ProductImportCandidate,
+  categoryId: string,
+  destinationUrl: string,
+  editorialReview: EditorialReviewInput
+): CatalogRecords {
+  return {
     categories: [...baseCatalog.categories],
-    products: [...baseCatalog.products, product],
-    reviews: [...baseCatalog.reviews, review],
-    merchants: [...baseCatalog.merchants, merchant],
-    offers: [...baseCatalog.offers, offer],
+    products: [...baseCatalog.products, makeProduct(merged, categoryId)],
+    reviews: [...baseCatalog.reviews, makeReview(merged.slug, editorialReview)],
+    merchants: [...baseCatalog.merchants, makeMerchant(merged, destinationUrl, editorialReview.authorizationReference)],
+    offers: [...baseCatalog.offers, makeOffer(merged, editorialReview)],
   };
+}
 
+function publicationInputs(merged: ProductImportCandidate):
+  | { ok: true; categoryId: string; destinationUrl: string }
+  | { ok: false; result: PublishResult } {
+  if (!merged.categoryId) {
+    return { ok: false, result: publicationFailure("Publication requires a category assignment.", "VALIDATION_FAILED", ["Category is required for publication"]) };
+  }
+  const destinationUrl = canonicalDestinationUrl(merged.destinationUrl);
+  if (!destinationUrl) {
+    return { ok: false, result: publicationFailure("Publication requires a valid destination URL.", "VALIDATION_FAILED", ["Destination URL is invalid"]) };
+  }
+  return { ok: true, categoryId: merged.categoryId, destinationUrl };
+}
+
+function preparePublication(
+  draft: ImportDraft,
+  editorialReview: EditorialReviewInput,
+  options?: PublishOptions
+): PublicationPreparation {
+  const merged: ProductImportCandidate = { ...draft.candidate, ...draft.edits };
+  const inputs = publicationInputs(merged);
+  if (!inputs.ok) return inputs;
+  const baseCatalog: CatalogRecords = options?.catalogRecords ?? {
+    categories: [...DEFAULT_CATEGORIES], products: [], reviews: [], merchants: [], offers: [],
+  };
+  const candidateCatalog = makeCandidateCatalog(baseCatalog, merged, inputs.categoryId, inputs.destinationUrl, editorialReview);
   const today = options?.today ?? new Date().toISOString().slice(0, 10);
   const validationErrors = validateCatalog(candidateCatalog, today);
+  return validationErrors.length > 0
+    ? { ok: false, result: publicationFailure(`Catalog validation failed: ${validationErrors.join("; ")}`, "VALIDATION_FAILED", validationErrors) }
+    : { ok: true, productId: merged.slug };
+}
 
-  if (validationErrors.length > 0) {
-    return {
-      ok: false,
-      code: "VALIDATION_FAILED",
-      message: `Catalog validation failed: ${validationErrors.join("; ")}`,
-      errors: validationErrors,
-    };
-  }
+/**
+ * Validates editorial review input, synthesizes catalog records,
+ * and validates the entire catalog with validateCatalog before publishing.
+ */
+export async function publishImportDraft(
+  draftId: string,
+  version: number,
+  editorialReview: EditorialReviewInput,
+  options?: PublishOptions
+): Promise<PublishResult> {
+  const draftCheck = await getPublishableDraft(draftId, version);
+  if (!draftCheck.ok) return draftCheck.result;
 
-  // Publication passed! Update draft state to published
+  const preparation = preparePublication(draftCheck.draft, editorialReview, options);
+  if (!preparation.ok) return preparation.result;
+
+  // Publication passed; update the draft with the same optimistic version guard.
   const updateResult = await draftStore.updateDraft(
     draftId,
-    {
-      ...draft.edits,
-    },
+    { ...draftCheck.draft.edits },
     version
   );
+  const result: PublishResult = updateResult.ok && updateResult.draft
+    ? { ok: true, productId: preparation.productId, state: "published" }
+    : {
+        ok: false,
+        code: updateResult.code ?? "CONFLICT",
+        message: updateResult.message ?? "Failed to finalize publication state.",
+      };
 
-  if (!updateResult.ok || !updateResult.draft) {
-    return {
-      ok: false,
-      code: updateResult.code ?? "CONFLICT",
-      message: updateResult.message ?? "Failed to finalize publication state.",
-    };
-  }
-
-  // Set draft state = published
-  updateResult.draft.state = "published";
-
-  return {
-    ok: true,
-    productId,
-    state: "published",
-  };
+  if (result.ok && updateResult.draft) updateResult.draft.state = "published";
+  return result;
 }
