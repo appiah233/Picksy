@@ -217,6 +217,17 @@ for (const destination of [
   "https://user:secret@example.com/offer",
   "https://other.example/offer",
   "https://example.com.evil.test/offer",
+  "https://example.com:8443/offer",
+  "https://example.com:443/offer",
+  "https://example.com/offer#section",
+  "https://example.com/offer#",
+  "https://example.com/offer ",
+  "https://example.com/of fer",
+  "https:example.com/offer",
+  "https:/example.com/offer",
+  "https://EXAMPLE.com/offer",
+  "https://@example.com/offer",
+  "https://example.com/a/../offer",
 ]) {
   test(`rejects unsafe destination ${destination}`, () => {
     const records = fixture();
@@ -225,6 +236,29 @@ for (const destination of [
     assert.ok(validateCatalog(records).some((error) => error.includes("invalid active offer")));
   });
 }
+
+test("an unsafe destination is rejected at accessor construction", () => {
+  const records = fixture();
+  records.merchants[0].approvedDestinations[0].url = "https:example.com/offer";
+  assert.throws(() => createCatalogAccess(records), /Invalid catalog/);
+});
+
+for (const source of ["https:example.com/docs", "https:/example.com/docs"]) {
+  test(`rejects review source ${source} that a browser would resolve on Picksy`, () => {
+    const records = fixture();
+    records.reviews[0].sources = [source];
+    assert.ok(validateCatalog(records).some((error) => error.includes("incomplete review")));
+  });
+}
+
+test("an active offer on an unpublished product is rejected", () => {
+  const records = fixture();
+  records.products[0].state = "draft";
+  assert.ok(
+    validateCatalog(records).some((error) => error.includes("unpublished product for offer"))
+  );
+  assert.throws(() => createCatalogAccess(records), /Invalid catalog/);
+});
 
 test("inactive offer and incorrect merchant label cannot render", () => {
   const records = fixture();

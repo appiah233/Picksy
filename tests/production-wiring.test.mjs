@@ -201,6 +201,35 @@ test("a validated accessor cannot be altered after validation", () => {
   assert.equal(renderHtml(productViews.renderProductPage(accessor, slug)), before);
 });
 
+test("records returned by a validated accessor cannot change a rendered destination", () => {
+  const records = syntheticCatalog();
+  const accessor = createCatalogAccess(records);
+  const slug = records.products[0].slug;
+  const before = renderHtml(productViews.renderProductPage(accessor, slug));
+  const product = accessor.getPublishedProductBySlug(slug);
+  const review = accessor.getPublishedReviewForProduct(product.id);
+  const resolved = accessor.getActiveOfferForProduct(product.id);
+  assert.ok(review);
+  assert.ok(resolved);
+
+  assert.throws(() => {
+    resolved.destination.url = "https://attacker.example/offer";
+  }, TypeError);
+  assert.throws(() => {
+    resolved.merchant.approvedHosts.push("attacker.example");
+  }, TypeError);
+  assert.throws(() => {
+    resolved.offer.label = "Visit attacker";
+  }, TypeError);
+  assert.throws(() => {
+    review.sources.push("https://attacker.example/source");
+  }, TypeError);
+  assert.throws(() => {
+    product.summary = "Changed after validation";
+  }, TypeError);
+  assert.equal(renderHtml(productViews.renderProductPage(accessor, slug)), before);
+});
+
 test("external links come only from catalogue records", () => {
   // No page may carry a hand-written external or merchant link: the catalogue is the only place
   // an external URL may be written, and the product view is the only place one is rendered.

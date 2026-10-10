@@ -1,8 +1,8 @@
 # Picksy
 
-## Current implementation status
+## Project status
 
-Picksy currently publishes a landing page with six planned software categories. Gate 2 adds typed repository-managed catalog contracts, validation, and category/product route architecture. No category, product review, or affiliate offer is published because verified editorial research, merchant authorization, and a production origin have not been supplied. The new routes return a not-found page until publishable content is added. The site intentionally emits `noindex` metadata and does not advertise a sitemap at this stage.
+Picksy is a Next.js application for carefully researched business software discovery. The current site provides its landing experience and a validated catalogue architecture. The public catalogue remains empty until each product has evidence-backed editorial research, approved merchant destinations, and publication review. Catalogue routes therefore show not-found content while there are no publishable records. The site remains `noindex` until its launch requirements are met.
 
 ### Picksy Guardian
 
@@ -25,7 +25,7 @@ For a published category, the catalog record is authoritative for its displayed 
 
 Editorial dates use `YYYY-MM-DD` in UTC. Validation requires evaluation date ≤ publication date ≤ last-reviewed date ≤ the current UTC date when the catalog is built. Editors should use the actual UTC dates of their work; a future date blocks publication.
 
-Local validation uses Node.js 22: `npm test` runs ESLint, TypeScript, and catalog tests; `npm run build` verifies production compilation. GitLab pipeline and deployed behavior require separate evidence.
+Local validation uses Node.js 22. `npm test` runs lint, type checking, and unit tests. `npm run test:build` runs the production build and build-isolation checks. GitLab pipeline and deployed behavior require separate evidence.
 
 > **Helping businesses pick the right software with confidence.**
 
@@ -35,7 +35,7 @@ Local validation uses Node.js 22: `npm test` runs ESLint, TypeScript, and catalo
 
 **Picksy** is an independent software discovery and implementation platform designed to help modern organizations—including agencies, consultants, small-to-medium enterprises (SMEs), entrepreneurs, creators, and technical professionals—choose and adopt business software with clarity, confidence, and objective evidence.
 
-Modern SaaS markets are crowded with aggressive marketing and inflated claims. Picksy aims to address this by publishing:
+Picksy addresses crowded SaaS markets with evidence-led evaluations and practical implementation guidance, including:
 
 - Objective, hands-on evaluations.
 - Real-world operational workflows and architecture considerations.
@@ -88,12 +88,14 @@ The platform is engineered using modern, type-safe web technologies:
 | **Framework**         | Next.js 15                   | App Router, React Server Components (RSC), Edge Runtime            |
 | **Language**          | TypeScript 5                 | Strict mode enabled, zero `any` allowance, `@/*` aliases           |
 | **Styling**           | Tailwind CSS v4              | PostCSS integration, design system tokens, zero runtime CSS-in-JS  |
-| **Components**        | Radix UI / Shadcn Principles | Accessible primitives, clean B2B aesthetic, mobile-first           |
-| **Icons**             | Lucide React                 | Lightweight, tree-shakable SVG icon system                         |
-| **Database (Future)** | Neon PostgreSQL              | Serverless PostgreSQL with connection pooling                      |
-| **ORM (Future)**      | Prisma ORM                   | Type-safe schema definition and migration blueprint                |
-| **Hosting**           | Vercel                       | Global edge caching, instant preview deployments                   |
-| **CI / CD**           | GitLab Auto DevOps           | Repository test override; inherited jobs require pipeline evidence |
+| **UI**                | React 19                      | Application and Sanity Studio tooling                               |
+| **Styling**           | Tailwind CSS 4                | Utility-first responsive styling                                    |
+| **Content platform**  | Sanity                        | Approved editorial and catalogue control plane                      |
+| **Hosting**            | Vercel                        | Application hosting and preview deployments                         |
+| **CI / CD**            | GitLab CI                     | Repository test, build, and quality jobs                            |
+| **Monitoring checks** | Checkly + Playwright          | External API and browser checks; deployment needs project config     |
+
+Sanity is Picksy's only currently approved third-party business platform. Newsletter delivery is required, but its provider and delivery architecture have not been approved. Affiliate retrieval remains disabled until source permissions and credentials are documented. Imported content must remain a draft until a human publishes it; the public catalogue adapter validates published records before rendering.
 
 ---
 
@@ -152,10 +154,10 @@ git checkout develop
 nvm use
 
 # 4. Install dependencies
-npm install
+npm ci
 
-# 5. Create local environment file from example
-cp .env.example .env.local
+# 5. Configure local settings from the example as needed
+Copy-Item .env.example .env.local
 
 # 6. Start development server
 npm run dev
@@ -165,7 +167,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 ---
 
-## Quality Validation Scripts
+## Quality checks
 
 Picksy requires all code to pass static analysis, type checking, and production build gates before submission:
 
@@ -176,12 +178,17 @@ npm run typecheck
 # Lint codebase with ESLint
 npm run lint
 
-# Format code with Prettier
-npm run format
+# Run unit tests, lint, and TypeScript checks
+npm test
 
-# Verify production build compilation
-npm run build
+# Run production build and catalogue-isolation checks
+npm run test:build
+
+# Optional formatting check
+npm run format:check
 ```
+
+Checkly checks are configured in `checkly.config.ts` and `__checks__/`. Set `PICKSY_BASE_URL` to the deployed application URL before running them. If the deployment is protected by Vercel Deployment Protection, configure `VERCEL_AUTOMATION_BYPASS_SECRET` in the local environment; never commit the value. The agentic homepage and heartbeat checks are intentionally inactive placeholders.
 
 ---
 

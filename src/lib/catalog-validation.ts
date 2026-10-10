@@ -18,6 +18,7 @@ const validHttpsUrl = (value: string) => {
   try {
     const url = new URL(value);
     return (
+      // Without the explicit "//" a browser resolves the value against the current page.
       /^https:\/\//.test(value) &&
       url.protocol === "https:" &&
       !!url.hostname &&
@@ -70,7 +71,8 @@ export function isApprovedDestination(destination: string, merchant: Merchant): 
     const url = new URL(destination);
     return (
       validHttpsUrl(destination) &&
-      // The approved string must be exactly what URL parsing will request.
+      // The stored string must be the exact URL a browser will request, so the reviewed
+      // destination and the rendered one cannot differ after normalisation.
       url.href === destination &&
       !destination.includes("#") &&
       !url.username &&

@@ -22,11 +22,11 @@ export function renderCategoryPage(catalog: CatalogAccess, slug: string) {
   const products = catalog.getPublishedProductsForCategory(category.id);
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
+    <div className="mx-auto max-w-6xl px-4 py-12 [overflow-wrap:anywhere] sm:px-6 sm:py-16">
       <nav aria-label="Breadcrumb" className="text-sm text-zinc-600">
         <Link
           href="/"
-          className="rounded-sm underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950"
+          className="rounded-sm underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-zinc-950"
         >
           Home
         </Link>
@@ -58,7 +58,7 @@ export function renderCategoryPage(catalog: CatalogAccess, slug: string) {
               <Link
                 key={product.id}
                 href={`/products/${product.slug}`}
-                className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm hover:border-zinc-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2"
+                className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm hover:border-zinc-400 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2"
               >
                 <h3 className="text-lg font-semibold text-zinc-950">{product.name}</h3>
                 <p className="mt-2 text-sm text-zinc-600">{product.summary}</p>
