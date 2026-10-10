@@ -2095,3 +2095,45 @@ Codex implemented Gemini's comprehensive design blueprint in [`src/sanity/plugin
 
 ### 4. Next Exact Action
 Standing by for product owner provisioning of `SANITY_API_WRITE_TOKEN="sk..."` in local `.env.local` to execute live Content Lake draft mutation and catalog query testing.
+
+---
+
+### Milestone C-DASH-QUALITY-1: Dashboard component structure correction
+
+- **Timestamp:** 2026-10-10T17:08:17Z
+- **Agent / ownership:** Codex; Sanity Studio dashboard structure.
+- **Type / status:** DEFECT_RESOLVED; locally VERIFIED, external Code Quality rescan pending.
+- **Branch / baseline:** `develop` at `8de82b0`; working tree has unrelated importer, API, Prisma, evidence, and MCP edits that were preserved.
+
+#### 1. Problem Statement
+The scanner reported `AdminDashboardToolView` at 180 lines, above its 25-line function limit, and its file above the 250-line limit.
+
+#### 2. Scope & Non-Goals
+Extract dashboard presentation and static navigation data. No importer authorization, Content Lake mutation, schema, API, or public catalogue change.
+
+#### 3. Assumptions & Invariants
+The existing dashboard copy, links, guest notice, visual classes, and Sanity `useCurrentUser()` behavior remain. The dashboard makes no privileged importer API call.
+
+#### 4. Complexity & Algorithmic Assessment
+Static arrays contain two workflows and six collections; rendering remains bounded for this fixed set.
+
+#### 5. Edge Cases & Failure Modes
+Checked authenticated and guest branches by preserving their render conditions. A build failure from new client imports was the main integration risk.
+
+#### 6. Files Claimed & Modified
+`src/sanity/plugins/AdminDashboardToolView.tsx` changed; `src/sanity/plugins/dashboard/{DashboardHeader.tsx,DashboardSections.tsx,dashboard-data.ts}` created; this log appended. No shared contract changed. Only these files are claimed for the focused commit.
+
+#### 7. Implementation Summary
+The Studio tool now composes a header, guest banner, workflows, collection grid, and safeguard notice. TypeScript AST counts: entry function 14 lines; longest extracted function 21 lines. File lengths: 20, 62, 82, and 32 lines.
+
+#### 8. Verification & Evidence
+`npm run typecheck` passed; focused ESLint passed; `npm test` passed 193/193; `npm run build` exited 0; `node --experimental-strip-types tests/build-isolation.mjs` passed 4/4. External Code Quality rescan has not run locally. No new authenticated browser or accessibility test was performed for this structure-only refactor.
+
+#### 9. Self-Critique & Limitations
+This removes the reported size violations; it does not resolve the existing editor-to-importer authorization and live persistence gates. Dashboard text retains prior target-architecture descriptions.
+
+#### 10. Regression Assessment
+Production Studio route bundled; public build isolation passed. Unrelated dirty files were neither edited nor staged.
+
+#### 11. Handover State & Next Action
+Gemini can cross-review the extracted visual components. Re-run the external Code Quality scan against this commit. Continue the separately tracked Sanity editor identity and persistence work before claiming live importer integration.
