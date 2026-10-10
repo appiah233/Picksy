@@ -98,6 +98,22 @@ export async function publishImportDraft(
 
   const productId = merged.slug;
 
+  // Store the canonical URL string that the browser will request. The catalogue
+  // validator deliberately rejects destinations whose stored string differs
+  // from URL.href, so a valid bare host such as https://example.com must be
+  // normalized before it is recorded as the approved destination.
+  let destinationUrl: string;
+  try {
+    destinationUrl = new URL(merged.destinationUrl).href;
+  } catch {
+    return {
+      ok: false,
+      code: "VALIDATION_FAILED",
+      message: "Publication requires a valid destination URL.",
+      errors: ["Destination URL is invalid"],
+    };
+  }
+
   const product: Product = {
     id: productId,
     slug: merged.slug,
@@ -128,7 +144,7 @@ export async function publishImportDraft(
 
   let merchantHost = "merchant.example";
   try {
-    merchantHost = new URL(merged.destinationUrl).hostname.toLowerCase();
+    merchantHost = new URL(destinationUrl).hostname.toLowerCase();
   } catch {
     // fallback host
   }
@@ -143,7 +159,7 @@ export async function publishImportDraft(
     approvedDestinations: [
       {
         id: destinationId,
-        url: merged.destinationUrl,
+        url: destinationUrl,
         authorizationReference: editorialReview.authorizationReference,
       },
     ],

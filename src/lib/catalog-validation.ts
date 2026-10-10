@@ -18,6 +18,7 @@ const validHttpsUrl = (value: string) => {
   try {
     const url = new URL(value);
     return (
+      /^https:\/\//.test(value) &&
       url.protocol === "https:" &&
       !!url.hostname &&
       !url.username &&
@@ -69,6 +70,9 @@ export function isApprovedDestination(destination: string, merchant: Merchant): 
     const url = new URL(destination);
     return (
       validHttpsUrl(destination) &&
+      // The approved string must be exactly what URL parsing will request.
+      url.href === destination &&
+      !destination.includes("#") &&
       !url.username &&
       !url.password &&
       !url.port &&
