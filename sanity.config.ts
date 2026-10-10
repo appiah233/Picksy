@@ -13,6 +13,7 @@ import {apiVersion, dataset, projectId} from './src/sanity/env'
 import {schema} from './src/sanity/schemaTypes'
 import {structure} from './src/sanity/structure'
 import {productImporterPlugin} from './src/sanity/plugins/productImporterPlugin'
+import {adminDashboardPlugin} from './src/sanity/plugins/adminDashboardPlugin'
 
 export default defineConfig({
   basePath: '/studio',
@@ -21,6 +22,7 @@ export default defineConfig({
   // Add and edit the content schema in the './src/sanity/schemaTypes' folder
   schema,
   plugins: [
+    adminDashboardPlugin(),
     structureTool({structure}),
     visionTool({defaultApiVersion: apiVersion}),
     productImporterPlugin(),

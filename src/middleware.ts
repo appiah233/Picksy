@@ -4,6 +4,12 @@ import { parseAdminGitLabIds } from "@/lib/admin-auth/authorization";
 import { authorizeAdminSession } from "@/lib/admin-auth/session-authorization";
 
 export default auth((request) => {
+  if (request.nextUrl.pathname === "/admin" || request.nextUrl.pathname === "/admin/") {
+    return NextResponse.redirect(new URL("/studio/dashboard", request.nextUrl.origin));
+  }
+  if (request.nextUrl.pathname === "/admin/imports" || request.nextUrl.pathname === "/admin/imports/") {
+    return NextResponse.redirect(new URL("/studio/product-importer", request.nextUrl.origin));
+  }
   const access = authorizeAdminSession(
     request.auth,
     parseAdminGitLabIds(process.env.AUTH_ADMIN_GITLAB_IDS)
