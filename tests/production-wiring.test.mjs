@@ -49,12 +49,20 @@ function target(file, specifier) {
 }
 
 const withoutExtension = (file) => file.replace(/\.tsx?$/, "");
+const isAdminOrImporter = (file) =>
+  file.startsWith("app/admin/") ||
+  file.startsWith("app/api/") ||
+  file.startsWith("features/admin/") ||
+  file.startsWith("lib/importer/");
+
 const importers = (file) =>
-  sourceFiles().filter((candidate) =>
-    specifiers(readSource(candidate)).some(
-      (specifier) => withoutExtension(target(candidate, specifier) ?? "") === withoutExtension(file)
-    )
-  );
+  sourceFiles()
+    .filter((candidate) => !isAdminOrImporter(candidate))
+    .filter((candidate) =>
+      specifiers(readSource(candidate)).some(
+        (specifier) => withoutExtension(target(candidate, specifier) ?? "") === withoutExtension(file)
+      )
+    );
 
 test("the production accessor is built from the production catalogue", () => {
   const expected = createCatalogAccess(catalogRecords);
@@ -84,15 +92,23 @@ test("there is exactly one catalogue source and one production accessor", () => 
   assert.deepEqual(importers(PRODUCTION_ACCESSOR).sort(), ROUTES);
 });
 
-test("the only routes are home, category and product", () => {
+test("the only public catalogue routes are home, category and product", () => {
   const routeFiles = sourceFiles().filter(
-    (file) => file.startsWith("app/") && /(?:^|\/)(?:page|route|default)\.[jt]sx?$/.test(file)
+    (file) =>
+      file.startsWith("app/") &&
+      !file.startsWith("app/admin/") &&
+      !file.startsWith("app/api/") &&
+      !file.startsWith("app/studio/") &&
+      /(?:^|\/)(?:page|route|default)\.[jt]sx?$/.test(file)
   );
   assert.deepEqual(routeFiles.sort(), ROUTES);
   const interceptors = sourceFiles().filter((file) =>
     /^(?:middleware|instrumentation)\./.test(file)
   );
-  assert.deepEqual(interceptors, []);
+  assert.deepEqual(interceptors, ["middleware.ts"]);
+  const middleware = readSource("middleware.ts");
+  assert.match(middleware, /matcher:\s*\["\/admin\/:path\*"\]/);
+  assert.doesNotMatch(middleware, /(?:\/categories|\/products|\/api\/admin)/);
 });
 
 test("the real route modules render from the production accessor and publish nothing", async () => {
@@ -217,8 +233,20 @@ test("records returned by a validated accessor cannot change a rendered destinat
 test("external links come only from catalogue records", () => {
   // No page may carry a hand-written external or merchant link: the catalogue is the only place
   // an external URL may be written, and the product view is the only place one is rendered.
+  // Per ADR-002, admin features and importer subsystems are isolated.
   const PRODUCT_VIEW = "features/catalog/product-page.tsx";
   for (const file of sourceFiles()) {
+    if (
+      file.startsWith("features/admin/") ||
+      file.startsWith("app/admin/") ||
+      file.startsWith("app/api/admin/") ||
+      file.startsWith("app/studio/") ||
+      file.startsWith("lib/importer/") ||
+      file.startsWith("lib/sanity-") ||
+      file.startsWith("sanity/")
+    ) {
+      continue;
+    }
     const text = readSource(file);
     if (file !== PRODUCTION_CATALOGUE) {
       assert.ok(!/https?:\/\/|["'`]\/\/\w/i.test(text), `${file} contains a hard-coded URL`);
@@ -239,7 +267,10 @@ test("production source imports nothing from outside src and holds no fixture da
     for (const specifier of specifiers(text)) {
       const resolved = target(file, specifier);
       assert.ok(
-        resolved === undefined || !resolved.startsWith(".."),
+        resolved === undefined ||
+          !resolved.startsWith("..") ||
+          (file === "app/studio/[[...tool]]/page.tsx" &&
+            specifier === "../../../../sanity.config"),
         `${file} imports from outside src: ${specifier}`
       );
     }

@@ -2,6 +2,8 @@ import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 
 export const TIMESTAMP_TOLERANCE_SECONDS = 300;
 const REVIEW_ACTIONS = new Set(["open", "reopen", "update"]);
+const PIPELINE_EVENTS = new Set(["success", "failed", "canceled", "skipped"]);
+export const GUARDIAN_TARGET_BRANCH = "main";
 
 function sameSecret(received, expected) {
   const digest = (value) => createHash("sha256").update(value).digest();
@@ -48,7 +50,36 @@ export function deliveryId(headers) {
 // Classifies an authenticated delivery. The payload only selects which Merge Request to look at;
 // the project is fixed by configuration and everything reviewed is re-read from the GitLab API.
 export function classifyEvent({ headers, payload, config }) {
-  if (headers["x-gitlab-event"] !== "Merge Request Hook") {
+  const eventName = headers["x-gitlab-event"];
+  if (eventName === "Pipeline Hook") {
+    const pipeline = payload?.object_attributes;
+    const project = payload?.project;
+    const mergeRequest =
+      payload?.merge_request ??
+      pipeline?.merge_request ??
+      payload?.object_attributes?.merge_request;
+    const iid = mergeRequest?.iid ?? pipeline?.merge_request_iid;
+    if (
+      payload === null ||
+      typeof payload !== "object" ||
+      payload.object_kind !== "pipeline" ||
+      pipeline === null ||
+      typeof pipeline !== "object" ||
+      typeof project !== "object" ||
+      project === null ||
+      project.id !== config.projectId ||
+      (config.projectPath && project.path_with_namespace !== config.projectPath) ||
+      !Number.isSafeInteger(iid) ||
+      iid <= 0
+    ) {
+      return { kind: "malformed" };
+    }
+    if (!PIPELINE_EVENTS.has(pipeline.status)) {
+      return { kind: "ignored", reason: "pipeline_not_finished" };
+    }
+    return { kind: "review", iid };
+  }
+  if (eventName !== "Merge Request Hook") {
     return { kind: "ignored", reason: "unsupported_event" };
   }
   const attributes = payload?.object_attributes;
@@ -76,5 +107,8 @@ export function classifyEvent({ headers, payload, config }) {
   }
   if (!REVIEW_ACTIONS.has(action)) return { kind: "ignored", reason: "irrelevant_action" };
   if (state !== "opened") return { kind: "ignored", reason: "not_open" };
+  if (attributes.target_branch !== GUARDIAN_TARGET_BRANCH) {
+    return { kind: "ignored", reason: "wrong_target_branch" };
+  }
   return { kind: "review", iid };
 }

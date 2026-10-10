@@ -26,9 +26,10 @@ A Guardian PASS is advisory evidence for the human reviewer. It is never an auth
 
 1. **Receive.** `POST /webhooks/gitlab`. Anything else is rejected.
 2. **Authenticate.** The delivery must carry a valid signature or secret token (see below).
-3. **Filter.** Only `Merge Request Hook` events for the configured project, with action `open`,
-   `reopen` or `update` on an open Merge Request, start a review. Other authentic events are
-   acknowledged and ignored.
+3. **Filter.** Only open Merge Requests targeting `main` are eligible. Merge Request Hook events
+   with action `open`, `reopen` or `update` schedule a review after the exact head pipeline has
+   finished. Completed `Pipeline Hook` events also schedule that review. Other authentic events
+   are acknowledged and ignored.
 4. **Re-read.** Guardian takes only the Merge Request number from the webhook. The revision,
    state, diff and pipeline are read from the GitLab API for the configured project.
 5. **Skip if done.** If Guardian's comment already records this revision under this policy
@@ -63,8 +64,9 @@ for a revision it reviewed only in part.
   the AI. The comment lists them and the status is at most WARN.
 - Commit messages, job logs and files outside the diff are not read. The one exception is
   `src/content/catalog.ts`, which is read at the reviewed revision to check that it is empty.
-- Guardian reviews when a revision is pushed. If the pipeline is still running then, the comment
-  says so; Guardian does not review again when the pipeline finishes.
+- Guardian reviews only after a completed pipeline exists for the exact revision. Configure both
+  Merge Request events and Pipeline events so a review skipped while the pipeline is running is
+  triggered again when it finishes.
 
 ## Policy
 
@@ -168,7 +170,7 @@ In the GitLab project, under **Settings → Webhooks**, add a webhook:
 
 - URL: `https://<guardian-host>/webhooks/gitlab`
 - Signing token or secret token: the value configured above
-- Trigger: **Merge request events** only
+- Trigger: **Merge request events** and **Pipeline events**
 - SSL verification: enabled
 
 Use **Test → Merge request events** and check the Merge Request for the comment.

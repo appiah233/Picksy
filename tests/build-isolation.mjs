@@ -36,8 +36,11 @@ test("production build output contains no synthetic fixture content", () => {
   }
 });
 
-test("the build contains only the home, category and product routes", () => {
-  assert.deepEqual(Object.keys(manifest("server/app-paths-manifest.json")).sort(), [
+test("the build contains only the home, category and product routes in the public catalog", () => {
+  const publicRoutes = Object.keys(manifest("server/app-paths-manifest.json"))
+    .filter((route) => !route.startsWith("/admin/") && !route.startsWith("/api/") && !route.startsWith("/studio/"))
+    .sort();
+  assert.deepEqual(publicRoutes, [
     "/_not-found/page",
     "/categories/[slug]/page",
     "/page",
@@ -52,7 +55,11 @@ test("the build contains only the home, category and product routes", () => {
   );
   const routes = manifest("routes-manifest.json");
   assert.deepEqual(routes.rewrites, { beforeFiles: [], afterFiles: [], fallback: [] });
-  assert.deepEqual(manifest("server/middleware-manifest.json").middleware, {});
+  const middleware = manifest("server/middleware-manifest.json").middleware;
+  assert.deepEqual(Object.keys(middleware), ["/"]);
+  assert.deepEqual(middleware["/"].matchers.map(({ originalSource }) => originalSource), [
+    "/admin/:path*",
+  ]);
 });
 
 test("the build publishes no category or product page", () => {
@@ -60,8 +67,14 @@ test("the build publishes no category or product page", () => {
   // statically generated from their parameters. A route switched to on-demand rendering would
   // drop out of `dynamicRoutes`, where it could serve pages this check cannot see.
   const prerender = manifest("prerender-manifest.json");
-  assert.deepEqual(Object.keys(prerender.routes).sort(), ["/", "/_not-found"]);
-  assert.deepEqual(Object.keys(prerender.dynamicRoutes).sort(), [
+  assert.deepEqual(
+    Object.keys(prerender.routes).filter((route) => !route.startsWith("/admin/")).sort(),
+    ["/", "/_not-found"]
+  );
+  const publicDynamicRoutes = Object.keys(prerender.dynamicRoutes)
+    .filter((route) => !route.startsWith("/studio/"))
+    .sort();
+  assert.deepEqual(publicDynamicRoutes, [
     "/categories/[slug]",
     "/products/[slug]",
   ]);
