@@ -12,9 +12,20 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-// Future models (Phase 2+ roadmap blueprint):
-// - SoftwareProduct (SaaS tools: HighLevel, SE Ranking, systeme.io)
-// - Category (CRM, SEO, Email, Course Platforms, Hosting, Security)
-// - Review (Editorial evaluations, ratings, breakdown)
-// - Comparison (Head-to-head feature matrices)
-// - NewsletterSubscriber (Double-opt-in subscriber records)
+// Importer Drafts Persistence (Neon PostgreSQL)
+model ImportDraft {
+  id                String   @id @default(uuid())
+  sourceId          String
+  canonicalUrl      String
+  externalProductId String?
+  state             String   @default("draft") // "draft" | "published"
+  candidate         Json     // Serialized ProductImportCandidate
+  edits             Json     // Serialized Partial<ProductImportCandidate>
+  version           Int      @default(1)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([sourceId, canonicalUrl])
+  @@index([sourceId, externalProductId])
+  @@index([state])
+}
