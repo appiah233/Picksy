@@ -1,8 +1,9 @@
 import type { ProductImportCandidate, ProvenanceRecord } from "../importer-types.ts";
 import type { RawProductPayload } from "./adapters/types.ts";
+import { parse } from "node-html-parser";
 
 /**
- * Strips HTML tags, script markers, event handlers, and decodes common entities.
+ * Converts source markup to inert display text. URL fields are validated separately.
  */
 export function sanitizeText(input: unknown): { text: string; hadHtml: boolean } {
   if (typeof input !== "string") {
@@ -10,28 +11,15 @@ export function sanitizeText(input: unknown): { text: string; hadHtml: boolean }
   }
 
   const raw = input.trim();
-  const hadHtml = /<[^>]+>|javascript:|on\w+=/i.test(raw);
+  const document = parse(raw);
+  for (const tag of ["script", "style"]) {
+    document.querySelectorAll(tag).forEach((element) => element.remove());
+  }
 
-  const cleaned = raw
-    // Strip script and style blocks entirely
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
-    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "")
-    // Strip HTML tags
-    .replace(/<[^>]+>/g, " ")
-    // Remove unsafe script protocol indicators
-    .replace(/javascript:/gi, "")
-    // Decode common entities
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&nbsp;/g, " ")
-    // Collapse consecutive whitespaces
-    .replace(/\s+/g, " ")
-    .trim();
-
-  return { text: cleaned, hadHtml };
+  const parsedText = document.textContent;
+  // Even encoded markup must not become markup after entity decoding.
+  const text = parsedText.replaceAll("<", " ").replaceAll(">", " ").replace(/\s+/g, " ").trim();
+  return { text, hadHtml: parsedText !== raw || /[<>]/.test(parsedText) };
 }
 
 /**
@@ -96,7 +84,7 @@ export function normalizeCandidate(payload: RawProductPayload): ProductImportCan
   // Name sanitization
   const nameSanitized = sanitizeText(payload.name || "Untitled Software");
   if (nameSanitized.hadHtml) {
-    warnings.push("Sanitized HTML tags from product name.");
+    warnings.push("Normalized markup or entities in product name.");
   }
   const name = nameSanitized.text || "Untitled Software";
   recordProvenance("name");
@@ -108,7 +96,7 @@ export function normalizeCandidate(payload: RawProductPayload): ProductImportCan
   // Summary / Description sanitization
   const descSanitized = sanitizeText(payload.description || "");
   if (descSanitized.hadHtml) {
-    warnings.push("Sanitized HTML tags from product description.");
+    warnings.push("Normalized markup or entities in product description.");
   }
   let summary = descSanitized.text;
   if (!summary) {
