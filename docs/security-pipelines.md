@@ -10,7 +10,7 @@ The current working tree contains separate, uncommitted importer/auth/Sanity/sch
 
 `.github/workflows/security-sast.yml` runs CodeQL `security-extended` queries for JavaScript/TypeScript with no build mode. GitHub's public repository Code Scanning supports this setup. The CodeQL job has `contents: read` and `security-events: write`; it receives no application secrets. The workflow runs for source/config/lockfile changes in pull requests and `main`/`develop` pushes, weekly, and manually. It skips documentation-only changes. CodeQL uploads to GitHub Code Scanning; a successful action execution alone does not prove there are no alerts.
 
-The same workflow audits the production npm dependency graph from the committed lockfile and uploads the JSON result. Its `--audit-level=high` check fails on high or critical findings. The local baseline on 2026-10-16 reported **13 high, 11 moderate, 0 critical** vulnerable packages in the production graph. One high finding is the direct `sanity` dependency; many others are transitive through Sanity, with another high `postcss` chain. The suggested fixes include major versions of Sanity and Next, so no automatic upgrades were made. These findings require owner/security triage and separate tested remediation. An audit failure is a real security finding, not a pipeline setup failure.
+The same workflow audits the production npm dependency graph from the committed lockfile and uploads the JSON result. Its `--audit-level=high` check fails on high or critical findings. The 2026-10-16 baseline reported **13 high, 11 moderate, 0 critical** vulnerable package entries. The [dependency triage](security-dependency-triage.md) groups the advisory chains and records the open remediation decision. The suggested fixes include major versions of Sanity and Next, so no automatic upgrades were made. An audit failure is a real security finding, not a pipeline setup failure.
 
 ## Public DAST
 
@@ -32,11 +32,16 @@ DAST runs on relevant pull requests to `main`/`develop`, relevant `main` pushes,
 
 Any suppression requires rule ID, component, evidence, technical justification, scope, date, and SecurityAgent approval. There are no suppressions in these workflows. GitHub branch protection is currently unconfigured, so failing checks are visible but do not themselves prevent a direct push or merge; configure required checks after their behavior has been reviewed.
 
+## Execution evidence (PR #2, 2026-10-16)
+
+- [Existing CI run 38893020592](https://github.com/appiah233/Picksy/actions/runs/38893020592) passed `npm ci`, `npm test`, and `npm run test:build` on security workflow commit `2409562`.
+- [SAST run 38893020631](https://github.com/appiah233/Picksy/actions/runs/38893020631): CodeQL JavaScript/TypeScript job passed and uploaded a PR analysis; the PR merge ref had zero Code Scanning alerts when queried. The production dependency job failed on the existing high findings and uploaded its audit artifact.
+- [Public DAST run 38893020608](https://github.com/appiah233/Picksy/actions/runs/38893020608) passed on the same commit. The HTML, JSON, and Markdown reports contain one localhost site, 10 alert rules and 27 instances: **0 high, 2 medium, 5 low, 3 informational**. The medium rules are absent CSP and anti-clickjacking headers. Reported URLs are the homepage, static assets, `robots.txt`, and `sitemap.xml`; other public routes were not exercised.
+- Independent TestingAgent review confirmed the workflow results, report artifact, source-only scope, and unchanged original worktree.
+
 ## Verification still required
 
-- Confirm CodeQL executes and uploads inspectable results on GitHub.
-- Confirm the ZAP workflow executes, report URLs remain within public scope, and reports are usable.
 - Review the production dependency findings without blindly applying major upgrades.
-- Confirm existing CI remains green on the exact security commit.
+- Assess and track the two medium ZAP header findings and lower-severity alerts. No application header changes are included here.
 - Verify Vercel preview/staging and production behavior externally before any deployed-environment DAST claim.
 - Keep GitLab OAuth, Sanity, and database behavior unchanged and verify them separately in their live environments.

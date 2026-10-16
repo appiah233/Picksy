@@ -2161,3 +2161,15 @@ Gemini can cross-review the extracted visual components. Re-run the external Cod
 - **Result:** CodeQL eligible on public JS/TS repository; existing secret scanning/push protection enabled; dependency baseline has 13 high and 11 moderate production-tree findings. Local ephemeral build approved as public DAST target; deployed Vercel target remains unverified.
 - **Blockers:** Dependency findings need triage; authenticated/deployed DAST not yet implemented; GitHub branch protection not configured.
 - **Next action:** Push an isolated security branch, run workflows, and obtain independent TestingAgent evidence before claiming completion.
+### GitHub security pipeline verification (2026-10-16)
+
+- **Agent:** ImplementationAgent (Codex); independent TestingAgent; SecurityAgent for triage recommendation.
+- **Timestamp:** 2026-10-16 (Africa/Accra).
+- **Branch:** `chore/security-pipelines`, PR #2 against `develop`.
+- **Task:** Verify CodeQL, dependency audit, and public ZAP on GitHub.
+- **Files modified:** `.github/zap-public.conf` delimiter correction; `docs/security-pipelines.md`, `docs/security-dependency-triage.md`, and this log for evidence. No application files.
+- **Commands executed:** `gh run view`, `gh run download`, `gh api` Code Scanning/secret scanning queries, `npm audit --omit=dev --json`, report JSON inspection, workflow/diff checks.
+- **Tests executed:** Existing CI run `38893020592` passed; CodeQL job in run `38893020631` passed and uploaded analysis with zero PR-ref alerts; dependency audit failed on 13 high and 11 moderate package entries; public ZAP run `38893020608` passed with artifact reviewed by TestingAgent (0 high, 2 medium, 5 low, 3 informational alert rules).
+- **Result:** Public localhost DAST and CodeQL executed; authenticated and Vercel-deployed DAST remain unverified. Initial ZAP config parsing failure was corrected and rerun successfully.
+- **Blockers:** High dependency findings require triage/remediation. SecurityAgent recommends leaving PR #2 open rather than bypassing the failing gate. GitHub branch protection remains unconfigured.
+- **Next action:** Review dependency advisory chains and two medium header findings, obtain tested remediation or a documented time-bound exception, then merge the pipelines. Verify deployed preview/staging separately.
