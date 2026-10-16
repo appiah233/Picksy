@@ -269,7 +269,8 @@ test("production source imports nothing from outside src and holds no fixture da
       assert.ok(
         resolved === undefined ||
           !resolved.startsWith("..") ||
-          (file === "app/studio/[[...tool]]/page.tsx" &&
+          ((file === "app/studio/[[...tool]]/page.tsx" ||
+            file === "app/studio/[[...tool]]/Studio.tsx") &&
             specifier === "../../../../sanity.config"),
         `${file} imports from outside src: ${specifier}`
       );

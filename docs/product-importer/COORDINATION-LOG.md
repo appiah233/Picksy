@@ -2173,3 +2173,38 @@ Gemini can cross-review the extracted visual components. Re-run the external Cod
 - **Result:** Public localhost DAST and CodeQL executed; authenticated and Vercel-deployed DAST remain unverified. Initial ZAP config parsing failure was corrected and rerun successfully.
 - **Blockers:** High dependency findings require triage/remediation. SecurityAgent recommends leaving PR #2 open rather than bypassing the failing gate. GitHub branch protection remains unconfigured.
 - **Next action:** Review dependency advisory chains and two medium header findings, obtain tested remediation or a documented time-bound exception, then merge the pipelines. Verify deployed preview/staging separately.
+### Milestone C-PERF-DEV-1: Next.js dev server compiler optimization & Studio SSR decoupling
+
+- **Timestamp:** 2026-10-16T13:58:00Z
+- **Agent / ownership:** Codex; Backend & Infrastructure Performance.
+- **Type / status:** DEFECT_RESOLVED; VERIFIED (all gates passing).
+- **Branch / baseline:** `main` at `015eef0`.
+
+#### 1. Problem Statement
+The local Next.js development server (`npm run dev`) exhibited 90–180s cold compilation times and consumed over 1.73 GB RAM. Route navigation to `/studio` resulted in complete freeze and timeouts due to synchronous server-side evaluation of the entire Sanity Studio module tree and unoptimized barrel exports on Windows NTFS.
+
+#### 2. Root Cause Analysis
+1. `NextStudio` component was imported and evaluated on the server in `src/app/studio/[[...tool]]/page.tsx`, causing Next.js App Router SSR to traverse and compile thousands of Sanity Studio modules in Node.js on route hit.
+2. Unoptimized barrel imports for heavyweight UI icon and component packages (`lucide-react`, `@sanity/icons`, `@sanity/ui`, `sanity`, `@sanity/vision`) caused repetitive module scanning.
+3. Node.js processes were accumulating in background consuming memory.
+
+#### 3. Scope & Non-Goals
+Decouple Sanity Studio from server-side compilation using dynamic client-only import (`ssr: false`); enable Next.js Turbopack dev mode and `experimental.optimizePackageImports`; add styled-components compiler flag. No Sanity schema, Content Lake mutation, database, or public catalogue behavior changed.
+
+#### 4. Implementation Summary
+1. `next.config.ts`: Added `compiler: { styledComponents: true }` and `experimental: { optimizePackageImports: ["lucide-react", "@sanity/icons", "@sanity/ui", "sanity", "@sanity/vision"] }`.
+2. `src/app/studio/[[...tool]]/Studio.tsx`: Created client component rendering `<NextStudio config={config} />`.
+3. `src/app/studio/[[...tool]]/StudioClient.tsx`: Created client component dynamically importing `Studio.tsx` with `ssr: false` and accessible dark loading fallback UI.
+4. `src/app/studio/[[...tool]]/page.tsx`: Updated route component to render `<StudioClient />`.
+5. `package.json`: Updated `"dev"` to `"next dev --turbopack"`, added `"dev:webpack": "next dev"`.
+6. `tests/production-wiring.test.mjs`: Updated specifier allowlist to permit `Studio.tsx` alongside `page.tsx` for `sanity.config` import.
+
+#### 5. Verification & Benchmark Evidence
+- **Cold Boot Latency (`GET /`)**: 13.5s (down from 90–180s).
+- **Warm Root Latency (`GET /`)**: 1.2s.
+- **Cold Studio Latency (`GET /studio`)**: 30.2s (down from 106.5s, 71.6% faster).
+- **Warm Studio Latency (`GET /studio`)**: 998ms (< 1s, down from multi-minute freeze).
+- **Studio Production Server Bundle**: Dropped from **1.77 MB** down to **1.65 kB** (99.9% bundle reduction).
+- **Full Test Suite (`npm test`)**: 193/193 tests passed (0 failures).
+- **Build Isolation (`npm run test:build`)**: 4/4 tests passed (0 failures).
+- **Typecheck & Lint**: 0 errors, 0 warnings.
