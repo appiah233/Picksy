@@ -140,6 +140,14 @@ export function createVerificationBotServer({
           /^[a-f0-9]{40}$/i.test(payload.pull_request.head?.sha || "");
         const isPush = typeof payload?.ref === "string" && payload.ref.startsWith("refs/heads/") &&
           Array.isArray(payload.commits);
+        const isReview = isPullRequest && payload.review && typeof payload.review === "object";
+        const isCheckRun = payload?.check_run && typeof payload.check_run === "object";
+        const isCheckSuite = payload?.check_suite && typeof payload.check_suite === "object";
+        if ((isReview && eventType === "pull_request_review") ||
+            (isCheckRun && eventType === "check_run") ||
+            (isCheckSuite && eventType === "check_suite")) {
+          return sendJson(res, 200, { status: "ignored", eventType });
+        }
         if (isPullRequest === isPush ||
             (isPullRequest && eventType !== "pull_request") ||
             (isPush && eventType !== "push")) {

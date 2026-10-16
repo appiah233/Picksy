@@ -561,6 +561,16 @@ test("Server rejects missing secrets and mismatched signed event shape", async (
       body: prBody,
     });
     assert.equal(reversed.status, 400);
+
+    const reviewBody = JSON.stringify({ pull_request: { number: 9, head: { sha: "a".repeat(40) } }, review: { state: "approved" } });
+    const reviewSignature = createHmac("sha256", WEBHOOK_SECRET).update(Buffer.from(reviewBody)).digest("hex");
+    const review = await fetch("http://localhost:3100/webhooks/github", {
+      method: "POST",
+      headers: { "x-hub-signature-256": `sha256=${reviewSignature}`, "x-github-event": "pull_request_review", "Content-Type": "application/json" },
+      body: reviewBody,
+    });
+    assert.equal(review.status, 200);
+    assert.equal((await review.json()).status, "ignored");
   } finally {
     await bot.stop();
   }
