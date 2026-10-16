@@ -1,0 +1,98 @@
+// Isolated development-only coordination schema.
+// This file is intentionally separate from Picksy content/importer models.
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("PICKSY_COORDINATION_DATABASE_URL")
+}
+
+model CoordinationAgent {
+  id          String   @id
+  label       String
+  lastSeenAt  DateTime
+  activeTaskId String?
+  tasks       CoordinationTask[]
+  messages    CoordinationMessage[]
+  locks       CoordinationFileLock[]
+  events      CoordinationEvent[]
+}
+
+model CoordinationTask {
+  id          String   @id
+  title       String
+  description String
+  status      String
+  ownerId     String?
+  fence       Int      @default(0)
+  blocker     String?
+  evidence   Json
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  owner      CoordinationAgent? @relation(fields: [ownerId], references: [id])
+  reviews    CoordinationReview[]
+  @@index([status, ownerId])
+}
+
+model CoordinationMessage {
+  id        String @id
+  agentId   String
+  body      String
+  taskId    String?
+  createdAt DateTime @default(now())
+  agent     CoordinationAgent @relation(fields: [agentId], references: [id])
+  @@index([createdAt])
+}
+
+model CoordinationFileLock {
+  id        String @id
+  path      String
+  agentId   String
+  fence     Int
+  expiresAt DateTime
+  agent     CoordinationAgent @relation(fields: [agentId], references: [id])
+  @@index([path, expiresAt])
+}
+
+model CoordinationReview {
+  id        String @id
+  taskId    String
+  requesterId String
+  reviewerId String
+  status    String
+  verdict   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  task      CoordinationTask @relation(fields: [taskId], references: [id])
+  @@index([reviewerId, status])
+}
+
+model CoordinationChange {
+  id        String @id
+  agentId   String
+  summary   String
+  files     Json
+  evidence  Json
+  createdAt DateTime @default(now())
+}
+
+model CoordinationEvent {
+  sequence  BigInt   @id @default(autoincrement())
+  type      String
+  actorId   String
+  resourceId String
+  createdAt DateTime @default(now())
+  actor     CoordinationAgent @relation(fields: [actorId], references: [id])
+  @@index([createdAt])
+}
+
+model CoordinationIdempotency {
+  key        String @id
+  operation  String
+  requestHash String
+  result     Json
+  createdAt  DateTime @default(now())
+}
