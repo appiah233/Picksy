@@ -2,6 +2,8 @@
 
 Status: **BLOCKED**. No MVP release tag or production-readiness claim is authorized. Scope is security remediation only. Gate 3 business-content approval remains separate.
 
+The owner-approved [controlled dependency investigation](release-remediation-options.md) records every `braces` path and the A–E decision matrix. ArchitectAgent and SecurityAgent independently reviewed that matrix; no supported A–D option removed all production paths, so implementation stopped before a major-version change.
+
 ## Evidence and gate decision
 
 - PR [#7](https://github.com/appiah233/Picksy/pull/7), revision `b4e0ed9`, replaces the dated High-severity audit exceptions with a zero High/Critical gate. SecurityAgent and TestingAgent independently reviewed the checker. Clean and malformed fixtures behave as expected; the current audit report fails on 13 High findings. The PR is open because its audit check correctly fails. GitHub reports no active branch ruleset or `main` branch protection, so a protected-branch integration process is not presently available.
