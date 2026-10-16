@@ -1,6 +1,6 @@
 # PR #7 residual-risk decision record — 2026-10-16
 
-**Status: PR #7 BLOCKED; technical remediation investigation COMPLETE; migration recommendation C; residual-risk decision OWNER REQUIRED.** This is an investigation record, not a risk acceptance, migration approval, release approval, or change to the zero High/Critical gate. [PR #7](https://github.com/appiah233/Picksy/pull/7) remains draft and unmerged; its `Production dependency audit` check correctly fails.
+**Status: PR #7 BLOCKED; technical remediation investigation COMPLETE; migration recommendation C; owner decision: DEFER RISK ACCEPTANCE.** This is an investigation record, not a risk acceptance, migration approval, release approval, or change to the zero High/Critical gate. [PR #7](https://github.com/appiah233/Picksy/pull/7) remains draft and unmerged; its `Production dependency audit` check correctly fails.
 
 ## Decision and evidence boundary
 
@@ -53,15 +53,17 @@ TestingAgent's matrix is mandatory for any later, separately authorized candidat
 
 These tests were **defined, not run** against a migrated application because implementation was not authorized and the candidate already fails the audit gate.
 
-## Owner decision remains open
+## Owner decision — 2026-10-16
 
-The owner may choose to:
+The owner **defers risk acceptance**. No security exception is authorized. PR #7 remains draft, unmerged, and blocked; Picksy remains release-blocked. No Sanity 6 / Next.js 16 major migration is authorized solely to remediate this gate. Reassess when upstream remediation or stronger production-artifact and runtime reachability evidence becomes available. The zero High/Critical gate remains unchanged.
+
+The paths available for a later owner decision remain:
 
 1. Keep Picksy release-blocked pending an upstream fix that removes the vulnerable production dependency paths and a fresh zero High/Critical audit.
 2. Obtain stronger evidence from the **actual production artifact and runtime** capable of proving the vulnerable path cannot be reached; the present D classification is insufficient for that claim.
 3. If project governance permits, consider a **formally documented, time-bounded owner risk acceptance** specifying scope, expiry, monitoring, and revocation criteria. This record does not grant one. Risk acceptance by itself does not make PR #7's unchanged zero High/Critical check pass and cannot be represented as technical remediation.
 
-No option is selected here. PR #7 stays draft, unmerged, and blocked. No MVP tag or production-readiness declaration follows from this record. Gate 3 business-content evidence remains a separate owner dependency.
+The owner has selected deferral, without granting an exception or approving a migration. No MVP tag or production-readiness declaration follows from this record. Gate 3 business-content evidence remains a separate owner dependency.
 
 ## Independent review
 
