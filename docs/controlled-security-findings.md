@@ -64,6 +64,14 @@ No override or major upgrade was applied. Unsupported out-of-range overrides wou
 
 ## Governance and release
 
-GitHub currently has no active `main` ruleset. The actual check names are `test-and-build`, `CodeQL JavaScript/TypeScript`, `Production dependency audit`, and `public-baseline`. CI runs on every PR; SAST/DAST have path filters. To require all four without permanently pending documentation-only PRs, remove those PR path filters first, then configure an active `main` ruleset requiring one fresh approval, up-to-date required checks, no force pushes/deletion, and no routine administrator bypass. Repository administrator action is required; no ruleset was changed here. PR #7's strict zero High/Critical gate remains open and unmerged pending the owner risk decision.
+GitHub currently has no active `main` ruleset. The actual check names are `test-and-build`, `CodeQL JavaScript/TypeScript`, `Production dependency audit`, and `public-baseline`. CI runs on every PR; SAST/DAST have path filters. A documentation-only PR would leave the latter three pending if all four were required now. No ruleset was changed here.
+
+Exact proposed `main` governance, in order:
+
+1. Remove the `pull_request.paths` filter from `.github/workflows/security-sast.yml` and `.github/workflows/security-dast.yml` in a reviewed PR; retain their existing push, schedule, manual triggers and job implementations. Verify all four checks execute on a documentation-only PR after that change.
+2. Set an active repository ruleset targeting only `refs/heads/main`, with pull requests required; one approving review from a non-author; approval of the most recent reviewable push; dismissal of stale approvals; conversation resolution; and required checks from GitHub Actions, required to pass on the current head with branch up to date. Block force pushes and deletion, and allow no routine administrator bypass. Keep direct pushes to `main` disallowed.
+3. Require `test-and-build`, `CodeQL JavaScript/TypeScript`, and `public-baseline` once their trigger coverage is verified. Add `Production dependency audit` to the required list only after the owner resolves PR #7's strict-gate decision: once PR #7 is integrated, its correctly failing 13-High result will block all PRs. The final target required-check set is all four exact names above.
+
+PR #7's strict zero High/Critical gate remains open and unmerged pending the owner risk decision. Repository administration and the strict-gate sequencing require owner action; current governance is **not configured**.
 
 Gate 3 remains blocked by real owner-supplied merchant, authorized destination, product research, editorial review, affiliate disclosure, recheck ownership, and production origin. **Release decision: BLOCKED.**
