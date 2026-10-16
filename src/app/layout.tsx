@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
+import { Search, Sparkles } from "lucide-react";
 import { siteConfig } from "@/config/site";
 import "./globals.css";
 
@@ -35,37 +36,34 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="scroll-pt-24 motion-safe:scroll-smooth">
-      <body className="min-h-screen flex flex-col bg-[#fcfcfd] text-zinc-900 antialiased selection:bg-zinc-200">
+      <body className="min-h-screen flex flex-col bg-[#0c0c12] text-zinc-900 antialiased selection:bg-indigo-300">
         <a
           href="#main-content"
           className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-white focus:p-3 focus:outline-hidden focus:ring-2 focus:ring-zinc-950"
         >
           Skip to main content
         </a>
-        <header className="sticky top-0 z-40 w-full border-b border-zinc-200/80 bg-white/95 backdrop-blur-md">
-          <div className="mx-auto flex min-h-16 max-w-6xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3 sm:px-6">
-            <Link
-              href="/"
-              className="flex items-center space-x-2 rounded-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2"
-            >
-              <span className="text-xl font-bold tracking-tight text-zinc-950">
-                Picksy<span className="text-zinc-400">.</span>
-              </span>
+        <header className="picksy-site-header">
+          <div className="picksy-container picksy-header-inner">
+            <Link href="/" className="picksy-logo">
+              <Sparkles aria-hidden="true" size={31} fill="currentColor" strokeWidth={1.5} />
+              <span>Picksy</span>
             </Link>
-            <nav
-              aria-label="Main navigation"
-              className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-medium text-zinc-600 sm:gap-x-6"
-            >
+            <nav aria-label="Main navigation" className="picksy-main-nav">
               {siteConfig.mainNav.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="rounded-sm transition-colors hover:text-zinc-950 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2"
-                >
+                <Link key={item.href} href={item.href} className="picksy-nav-link">
                   {item.title}
                 </Link>
               ))}
             </nav>
+            <div className="picksy-header-actions">
+              <Link href="/#products" aria-label="Explore products">
+                <Search aria-hidden="true" size={19} />
+              </Link>
+              <Link href="/#deals" className="picksy-header-deal">
+                Today&apos;s Deals
+              </Link>
+            </div>
           </div>
         </header>
 
@@ -73,7 +71,7 @@ export default function RootLayout({
           {children}
         </main>
 
-        <footer className="border-t border-zinc-200 bg-white text-zinc-600">
+        <footer className="picksy-site-footer">
           <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:py-16">
             <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
               <div className="space-y-3">
