@@ -133,21 +133,20 @@ export function createVerificationBotServer({
           return sendJson(res, 400, { error: "Invalid JSON payload" });
         }
 
-        // The event header is not part of GitHub's signed body. Reject a header
-        // that does not match the authenticated payload before dispatching it.
-        if (eventType === "pull_request" &&
-            (typeof payload?.pull_request !== "object" || payload.pull_request === null ||
-              !Number.isSafeInteger(payload.pull_request.number) || payload.pull_request.number < 1 ||
-              !/^[a-f0-9]{40}$/i.test(payload.pull_request.head?.sha || ""))) {
-          return sendJson(res, 400, { error: "Invalid pull request event payload" });
-        }
-        if (eventType === "push" &&
-            (typeof payload?.ref !== "string" || !payload.ref.startsWith("refs/heads/") ||
-              !Array.isArray(payload.commits))) {
-          return sendJson(res, 400, { error: "Invalid push event payload" });
+        // X-GitHub-Event is outside the signed body. Derive actionable event
+        // kind from the authenticated payload, then require the header to agree.
+        const isPullRequest = typeof payload?.pull_request === "object" && payload.pull_request !== null &&
+          Number.isSafeInteger(payload.pull_request.number) && payload.pull_request.number > 0 &&
+          /^[a-f0-9]{40}$/i.test(payload.pull_request.head?.sha || "");
+        const isPush = typeof payload?.ref === "string" && payload.ref.startsWith("refs/heads/") &&
+          Array.isArray(payload.commits);
+        if (isPullRequest === isPush ||
+            (isPullRequest && eventType !== "pull_request") ||
+            (isPush && eventType !== "push")) {
+          return sendJson(res, 400, { error: "Event header does not match signed payload" });
         }
 
-        const classified = classifyWebhookEvent(eventType, payload);
+        const classified = classifyWebhookEvent(isPullRequest ? "pull_request" : "push", payload);
 
         // Process Event
         let responseData = { status: "processed", eventType };
@@ -186,7 +185,9 @@ export function createVerificationBotServer({
           let checkRuns = [];
           if (!apiError && githubClient) {
             const checksRes = await githubClient.getCommitCheckRuns(pr.head.sha);
-            if (checksRes.ok && Array.isArray(checksRes.data?.check_runs) && !checksRes.hasNextPage) {
+            if (checksRes.ok && Array.isArray(checksRes.data?.check_runs) && !checksRes.hasNextPage &&
+                (!Number.isSafeInteger(checksRes.data.total_count) ||
+                  checksRes.data.check_runs.length === checksRes.data.total_count)) {
               checkRuns = checksRes.data.check_runs;
             } else {
               apiError = checksRes.hasNextPage ? "Check run list is paginated; cannot verify incomplete checks" : checksRes.error || `Failed to fetch check runs: status ${checksRes.status}`;
