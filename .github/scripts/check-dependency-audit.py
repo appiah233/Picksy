@@ -23,8 +23,15 @@ if not isinstance(vulnerabilities, dict) or not isinstance(counts, dict):
 
 for severity in ("critical", "high"):
     count = counts.get(severity)
-    if not isinstance(count, int) or count < 0:
+    if type(count) is not int or count < 0:
         raise SystemExit(f"Production dependency audit has invalid {severity} count")
+
+for package, entry in vulnerabilities.items():
+    if (
+        not isinstance(entry, dict)
+        or entry.get("severity") not in ("info", "low", "moderate", "high", "critical")
+    ):
+        raise SystemExit(f"Production dependency audit has invalid entry: {package}")
 
 findings = [
     f"{package} ({entry['severity']})"
