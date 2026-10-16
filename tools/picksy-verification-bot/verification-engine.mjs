@@ -123,6 +123,29 @@ export class VerificationEngine {
   }
 
   /**
+   * Strictly resolves agent identity from explicit registered task metadata.
+   * Never infers from heuristic substrings, commit text, or AI output.
+   */
+  resolveAgentIdentity({ branch = "", prNumber = null, taskId = null } = {}) {
+    const normBranch = branch.replace(/^refs\/heads\//, "");
+    const prNum = prNumber !== null && prNumber !== undefined ? Number(prNumber) : null;
+
+    for (const task of this.activeTasks) {
+      if (taskId && task.taskId === taskId) {
+        return { agentName: task.agent, matchedTask: task, task, isRegistered: true };
+      }
+      if (prNum !== null && task.pullRequest === prNum) {
+        return { agentName: task.agent, matchedTask: task, task, isRegistered: true };
+      }
+      if (normBranch && task.branch === normBranch) {
+        return { agentName: task.agent, matchedTask: task, task, isRegistered: true };
+      }
+    }
+
+    return { agentName: "UNKNOWN", matchedTask: null, task: null, isRegistered: false };
+  }
+
+  /**
    * Scans untrusted input and records injection findings.
    */
   _checkUntrustedInputs(inputs = []) {
@@ -145,25 +168,35 @@ export class VerificationEngine {
   /**
    * Evaluates change and scope for a set of files modified by an agent.
    */
-  evaluateScope(files, agentName) {
+  evaluateScope(files = [], agentName = "UNKNOWN") {
+    // If no files are present to evaluate
+    if (files.length === 0) {
+      return {
+        overallScope: SCOPE_CLASSIFICATIONS.UNKNOWN,
+        classifications: [],
+        requiresHumanReview: true,
+        summary: "No observable modified files present for scope evaluation",
+      };
+    }
+
     const classifications = [];
     let hasOutOfScope = false;
     let hasConflict = false;
     let hasUnknown = false;
     let requiresHumanReview = false;
 
-    // If agent is unknown
-    if (!this.policy.agents?.[agentName]) {
+    // If agent is unknown or not registered
+    if (!agentName || agentName === "UNKNOWN" || !this.policy.agents?.[agentName]) {
       return {
         overallScope: SCOPE_CLASSIFICATIONS.UNKNOWN,
         classifications: files.map((f) => ({
           file: normalizePath(f),
           classification: SCOPE_CLASSIFICATIONS.UNKNOWN,
-          reason: `Agent '${agentName}' is not recognized in policy`,
+          reason: `Agent '${agentName}' is not registered with explicit task metadata in policy`,
           requiresHumanReview: true,
         })),
         requiresHumanReview: true,
-        summary: `Unregistered agent '${agentName}' submitted changes`,
+        summary: `Unregistered agent '${agentName}' submitted changes; explicit task metadata required`,
       };
     }
 
@@ -482,37 +515,70 @@ export class VerificationEngine {
     prNumber,
     headSha,
     agentName,
+    branch = "",
+    taskId = null,
     files = [],
     diff = "",
     checkRuns = [],
     title = "",
     description = "",
     claims = [],
+    apiError = null,
   }) {
-    // 1. Check untrusted text for prompt injections
+    // 1. Resolve agent identity strictly from registered task metadata if not explicitly provided
+    let resolvedAgent = agentName;
+    if (!resolvedAgent || resolvedAgent === "UNKNOWN") {
+      const idRes = this.resolveAgentIdentity({ branch, prNumber, taskId });
+      resolvedAgent = idRes.agentName;
+    }
+
+    // 2. Check untrusted text for prompt injections
     const injectionFindings = this._checkUntrustedInputs([
       { name: `PR #${prNumber} Title`, content: title },
       { name: `PR #${prNumber} Description`, content: description },
       { name: `PR #${prNumber} Diff`, content: diff },
     ]);
 
-    // 2. Evaluate Scope
-    const scopeEval = this.evaluateScope(files, agentName);
+    if (apiError) {
+      injectionFindings.push({
+        type: "GITHUB_API_ERROR",
+        severity: "HIGH",
+        location: "GitHub REST Client",
+        message: String(apiError),
+        action: "Fails closed into UNVERIFIED; human review required.",
+      });
+    }
 
-    // 3. Detect Cross-Agent Conflicts
-    const conflicts = this.detectCrossAgentConflicts(agentName, files, diff, `PR #${prNumber}`);
+    if (files.length === 0) {
+      injectionFindings.push({
+        type: "EMPTY_FILE_LIST",
+        severity: "HIGH",
+        location: `PR #${prNumber}`,
+        message: "PR has no observable modified files (or fetch failed). Cannot verify empty change.",
+        action: "Fails closed into UNVERIFIED; human review required.",
+      });
+    }
 
-    // 4. Evaluate Checks
+    // 3. Evaluate Scope
+    const scopeEval = this.evaluateScope(files, resolvedAgent);
+
+    // 4. Detect Cross-Agent Conflicts
+    const conflicts = this.detectCrossAgentConflicts(resolvedAgent, files, diff, `PR #${prNumber}`);
+
+    // 5. Evaluate Checks
     const checkEval = this.evaluateChecks(checkRuns);
 
-    // 5. Verify Claims
+    // 6. Verify Claims
     const claimVerdicts = this.verifyClaims(claims, checkEval, scopeEval);
 
-    // 6. Synthesize Final Verification State
+    // 7. Synthesize Final Verification State
     let finalState = VERIFICATION_STATES.VERIFIED;
     let requiresHumanReview = false;
 
-    if (conflicts.length > 0) {
+    if (apiError || files.length === 0) {
+      finalState = VERIFICATION_STATES.UNVERIFIED;
+      requiresHumanReview = true;
+    } else if (conflicts.length > 0) {
       finalState = VERIFICATION_STATES.CONFLICT;
       requiresHumanReview = true;
     } else if (scopeEval.overallScope === SCOPE_CLASSIFICATIONS.OUT_OF_SCOPE || checkEval.anyFailed) {
@@ -537,7 +603,7 @@ export class VerificationEngine {
     const result = {
       prNumber,
       headSha,
-      agentName,
+      agentName: resolvedAgent,
       state: finalState,
       requiresHumanReview,
       scope: scopeEval,
@@ -546,12 +612,16 @@ export class VerificationEngine {
       claims: claimVerdicts,
       securityFindings: injectionFindings,
       specialNotes,
+      reason: apiError ? String(apiError) : (injectionFindings.length > 0 ? injectionFindings[0].message : null),
       verifiedAt: new Date().toISOString(),
     };
 
     // Cache by SHA so new commit supersedes prior state
     this.verificationCache.set(`pr-${prNumber}`, result);
     this.verificationCache.set(headSha, result);
+    if (resolvedAgent && resolvedAgent !== "UNKNOWN") {
+      this.verificationCache.set(resolvedAgent, result);
+    }
 
     return result;
   }

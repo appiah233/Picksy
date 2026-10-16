@@ -1,4 +1,5 @@
 import { createServer } from "node:http";
+import { timingSafeEqual } from "node:crypto";
 import { URL } from "node:url";
 import { AuditLog } from "./audit-log.mjs";
 import { formatAsciiReport, buildMobileStatusSnapshot } from "./formatter.mjs";
@@ -11,18 +12,30 @@ const MAX_BODY_BYTES = 2_000_000; // 2 MB body cap
 
 function readRawBody(req) {
   return new Promise((resolve, reject) => {
+    const contentLength = parseInt(req.headers["content-length"] || "0", 10);
+    if (contentLength > MAX_BODY_BYTES) {
+      const err = new Error("Request body exceeded maximum limit");
+      err.statusCode = 413;
+      return reject(err);
+    }
     const chunks = [];
     let size = 0;
+    let exceeded = false;
     req.on("data", (chunk) => {
+      if (exceeded) return;
       size += chunk.length;
       if (size > MAX_BODY_BYTES) {
-        req.destroy();
-        reject(new Error("Request body exceeded maximum limit"));
+        exceeded = true;
+        const err = new Error("Request body exceeded maximum limit");
+        err.statusCode = 413;
+        reject(err);
       } else {
         chunks.push(chunk);
       }
     });
-    req.on("end", () => resolve(Buffer.concat(chunks)));
+    req.on("end", () => {
+      if (!exceeded) resolve(Buffer.concat(chunks));
+    });
     req.on("error", reject);
   });
 }
@@ -73,7 +86,14 @@ export function createVerificationBotServer({
 
       // 2. Webhook receiver
       if (pathname === "/webhooks/github" && method === "POST") {
-        const rawBody = await readRawBody(req);
+        let rawBody;
+        try {
+          rawBody = await readRawBody(req);
+        } catch {
+          req.resume();
+          return sendJson(res, 413, { error: "Payload Too Large: body exceeded 2MB limit" });
+        }
+
         const sigHeader = req.headers["x-hub-signature-256"];
         const deliveryId = req.headers["x-github-delivery"];
         const eventType = req.headers["x-github-event"];
@@ -112,25 +132,23 @@ export function createVerificationBotServer({
         let responseData = { status: "processed", eventType };
 
         if (classified.type === "pull_request") {
-          // Identify agent from author/assignee/body/branch
+          // Strictly resolve agent identity from registered task metadata
           const branch = classified.headRef || "";
-          let agentName = "Unknown";
-          if (branch.includes("codex") || classified.sender?.toLowerCase().includes("codex")) {
-            agentName = "Codex";
-          } else if (branch.includes("gemini") || classified.sender?.toLowerCase().includes("gemini")) {
-            agentName = "Gemini";
-          } else {
-            // Check active tasks for matching branch
-            const matchedTask = engine.getActiveTasks().find((t) => t.branch === branch);
-            if (matchedTask) agentName = matchedTask.agent;
-          }
+          const idRes = engine.resolveAgentIdentity({
+            branch,
+            prNumber: classified.number,
+          });
+          const agentName = idRes.agentName; // "Codex", "Gemini", or "UNKNOWN"
 
           // Fetch files & checks via client if not in payload
           let files = (payload.files || []).map((f) => f.filename || f);
+          let apiError = null;
           if (files.length === 0 && githubClient) {
             const filesRes = await githubClient.getPullRequestFiles(classified.number);
             if (filesRes.ok && Array.isArray(filesRes.data)) {
               files = filesRes.data.map((f) => f.filename);
+            } else if (!filesRes.ok) {
+              apiError = filesRes.error || `Failed to fetch PR files: status ${filesRes.status}`;
             }
           }
 
@@ -139,6 +157,8 @@ export function createVerificationBotServer({
             const checksRes = await githubClient.getCommitCheckRuns(classified.headSha);
             if (checksRes.ok && Array.isArray(checksRes.data?.check_runs)) {
               checkRuns = checksRes.data.check_runs;
+            } else if (!checksRes.ok && !apiError) {
+              apiError = checksRes.error || `Failed to fetch check runs: status ${checksRes.status}`;
             }
           }
 
@@ -146,11 +166,13 @@ export function createVerificationBotServer({
             prNumber: classified.number,
             headSha: classified.headSha,
             agentName,
+            branch,
             files,
             diff: payload.diff || "",
             checkRuns,
             title: classified.title,
             description: classified.body,
+            apiError,
           });
 
           currentConflicts = verification.conflicts;
@@ -234,6 +256,30 @@ export function createVerificationBotServer({
           return sendJson(res, 200, { tasks: engine.getActiveTasks() });
         }
         if (method === "POST") {
+          const ownerTokenHeader = req.headers["x-owner-token"];
+          const expectedToken = process.env.VERIFICATION_BOT_OWNER_TOKEN || policy.ownerToken || "test-owner-token-secret";
+
+          let isAuthorized = false;
+          if (ownerTokenHeader && typeof ownerTokenHeader === "string") {
+            const bufA = Buffer.from(ownerTokenHeader);
+            const bufB = Buffer.from(expectedToken);
+            if (bufA.length === bufB.length && timingSafeEqual(bufA, bufB)) {
+              isAuthorized = true;
+            }
+          }
+
+          if (!isAuthorized) {
+            auditLog.record({
+              eventType: "UNAUTHORIZED_TASK_REGISTRATION",
+              agent: "UNKNOWN",
+              reference: pathname,
+              githubFacts: { remoteAddress: req.socket?.remoteAddress },
+              botConclusions: { error: "Missing or invalid X-Owner-Token header" },
+              requiresHumanReview: true,
+            });
+            return sendJson(res, 401, { error: "Unauthorized: Invalid or missing X-Owner-Token" });
+          }
+
           const raw = await readRawBody(req);
           const task = JSON.parse(raw.toString("utf8"));
           engine.registerActiveTask(task);

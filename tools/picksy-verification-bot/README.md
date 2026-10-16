@@ -61,7 +61,7 @@ The **Picksy GitHub Verification Bot** is a lightweight, zero-dependency, fail-c
 - `GET /api/v1/tasks` & `POST /api/v1/tasks`: Task inspection and dynamic owner registration.
 - `GET /api/v1/conflicts`: Current file/line ownership conflicts.
 - `GET /api/v1/human-review`: Pending escalation items requiring human intervention.
-- `GET /api/v1/audit-log`: Structured immutable audit trail with redacted secrets.
+- `GET /api/v1/audit-log`: Structured APPEND-ONLY RUNTIME AUDIT LOG with redacted secrets.
 - `GET /api/v1/report`: Human-readable ASCII report summary.
 
 ---

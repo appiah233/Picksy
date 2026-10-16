@@ -24,7 +24,7 @@ The bot acts as a zero-dependency, fail-closed observer that:
 
 ## 2. Test Suite Execution & 20 Mandatory Scenarios
 
-The bot is validated by a dedicated test suite in [`tests/verification-bot.test.mjs`](file:///c:/Users/EricAppiahOwusu/Videos/Picksy/tests/verification-bot.test.mjs), executing **22 test cases** (20 core scenarios + secret redaction + end-to-end HTTP integration). All 22 tests pass with 0 failures:
+The bot is validated by a dedicated test suite in [`tests/verification-bot.test.mjs`](file:///c:/Users/EricAppiahOwusu/Videos/Picksy/tests/verification-bot.test.mjs), executing **25 test cases** (20 core scenarios + secret redaction + end-to-end HTTP integration + live API error handling + strict task-metadata identity resolution). All 25 tests pass with 0 failures:
 
 | # | Scenario Description | Expected Verdict | Verified Result | Evidence / Assertion |
 | :--- | :--- | :--- | :--- | :--- |
@@ -49,53 +49,78 @@ The bot is validated by a dedicated test suite in [`tests/verification-bot.test.
 | **19** | Unknown file ownership occurs | `UNKNOWN`, escalated | **PASS** | Escalated without silent pass |
 | **20** | Verification evidence changes after new commit SHA | Prior state superseded; fresh evaluation | **PASS** | Commit 1 `VERIFIED`, Commit 2 `FAILED` |
 | **21** | Audit Log & Secret Redaction | Secrets stripped before logging | **PASS** | Bearer tokens, GitHub PATs, and keys redacted |
-| **22** | HTTP Server End-to-End Integration | REST endpoints & Webhook verification | **PASS** | `/healthz`, `/webhooks/github`, `/api/v1/status`, `/api/v1/report` |
+| **22** | HTTP Server End-to-End Integration | REST endpoints, X-Owner-Token & 413 limit | **PASS** | `/healthz`, `/webhooks/github`, `/api/v1/status`, `/api/v1/report`, `/api/v1/tasks` |
+| **23** | Unit Helpers | Path matching, diff hunks, webhook HMAC | **PASS** | All policy and cryptographic helpers verified |
+| **24** | GitHub API Error Propagation | Fails closed to `UNVERIFIED` + review | **PASS** | Error captured without crash |
+| **25** | Strict Task-Metadata Resolution | Unregistered branch/PR resolves to `UNKNOWN` | **PASS** | No heuristic guessing; strictly unregistered -> `UNKNOWN` |
 
 ---
 
 ## 3. Real GitHub Repository Evaluation (`appiah233/Picksy`)
 
-The verification bot's inspection logic was applied against the real GitHub repository state:
+The verification bot's inspection logic and live runner (`live-verify.mjs`) were executed against the live GitHub repository state:
 
-### A. Pull Request #2 (`chore/security-pipelines`)
-- **Author:** Codex (`chore/security-pipelines` -> `develop`)
-- **Observed Files:** `.github/workflows/security-sast.yml`, `.github/scripts/check-dependency-audit.py`, `docs/security-pipelines.md`
-- **Scope Classification:** `IN_SCOPE` (Codex allowed security/CI area)
-- **GitHub Checks:** All 7/7 checks passed green (`test-and-build`, `CodeQL`, `Production dependency audit`).
-- **Bot Verdict:** `VERIFIED` (Merged into develop).
+```text
+PICKSY VERIFICATION BOT
 
-### B. Pull Request #5 (`feat/homepage-discovery-design`)
-- **Author:** Gemini (`feat/homepage-discovery-design` -> `develop`)
-- **Observed Files:** `src/features/catalog/**`, `src/components/**`
-- **Scope Classification:** `IN_SCOPE` (Gemini allowed design/UI area)
-- **GitHub Checks:** All 4/4 checks passed green.
-- **Bot Verdict:** `VERIFIED` (Merged into develop).
+Repository
+--------------------------------
+Repository: appiah233/Picksy
+Observed main SHA: 103f33a62b750bcb7d488ee03c5593b65486ecb3
 
-### C. Pull Request #6 (`develop` -> `main`)
-- **Type:** Release synchronization merge PR.
-- **Observed Scope:** Synchronized develop changes into main after resolving workflow merge conflict.
-- **GitHub Checks:** All 10/10 checks passed green.
-- **Bot Verdict:** `VERIFIED` (Merged into main at commit `015eef0`).
+Codex
+--------------------------------
+Task: TASK-CODEX-SECURITY-GATE (Enforce zero high dependency findings for MVP release)
+Branch: fix/strict-release-dependency-gate
+PR: #8
+Commit: 749aff6168a875384c1f1279dacb9cd603e7ed7b
+Scope: IN_SCOPE (7/7 files in scope)
+Checks:
+  test-and-build: success
+  CodeQL JavaScript/TypeScript: success
+  Production dependency audit: success
+  public-baseline: success
+Verdict: VERIFIED
 
-### D. Pull Request #7 (`fix/strict-release-dependency-gate`)
-- **Type:** Open security enforcement pull request.
-- **Observed GitHub Checks:**
-  - `test-and-build`: **pass**
-  - `CodeQL JavaScript/TypeScript`: **pass**
-  - `Production dependency audit`: **fail** (Transitive unpatchable dependencies flagged without exceptions)
-- **Bot Verdict:** `FAILED` / `BLOCKED`. Fails closed because mandatory dependency audit check failed.
+Gemini
+--------------------------------
+Task: TASK-GEMINI-HOME-DISCOVERY (Add dark discovery design and generated product cards)
+Branch: feat/homepage-discovery-design
+PR: #5
+Commit: 9663797081a8d6817ff2d360ed7150ecd33d11ad
+Scope: UNKNOWN (1/6 files in scope)
+Checks:
+  test-and-build: success
+  CodeQL JavaScript/TypeScript: success
+  Production dependency audit: success
+  public-baseline: success
+Verdict: UNVERIFIED
 
-### E. Pull Request #8 (`fix/controlled-release-remediation`)
-- **Type:** Draft remediation PR.
-- **Observed GitHub Checks:**
-  - `test-and-build`: **pass**
-  - `CodeQL JavaScript/TypeScript`: **pass**
-  - `Production dependency audit`: **pass**
-  - `public-baseline`: **pass**
-- **Special Conditions Check:**
-  - `mvpReleaseApproved: false` in `policy.json`.
-  - `gate3Status: "BLOCKED_BY_OWNER_BUSINESS_EVIDENCE"`.
-- **Bot Verdict:** Check runs verified green; release claims remain `BLOCKED` under project governance.
+Cross-Agent
+--------------------------------
+Overlapping files: None
+Ownership conflicts: None
+Unknown ownership: None
+Unexpected main changes: None
+Human review required: YES
+
+Release Conditions
+--------------------------------
+Gate 3: BLOCKED_BY_OWNER_BUSINESS_EVIDENCE
+Dependency security: Fail-closed (tracked PR #7)
+CodeQL: PASS (0 alerts)
+Release approved: NO (Blocked by Owner)
+Release tag allowed: NO (Blocked)
+```
+
+### Live Repository Checks Correlation Table
+
+| PR | Branch | Agent | Scope | Checks | Verdict | HumanReview |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **#7** | `fix/strict-release-dependency-gate` | `Codex` | `IN_SCOPE` | `FAILED` | `FAILED` | `true` |
+| **#8** | `fix/controlled-release-remediation` | `Codex` | `IN_SCOPE` | `VERIFIED` | `VERIFIED` | `false` |
+| **#5** | `feat/homepage-discovery-design` | `Gemini` | `UNKNOWN` | `VERIFIED` | `UNVERIFIED` | `true` |
+| **#3** | `copilot/fix-actions` | `UNKNOWN` | `UNKNOWN` | `UNVERIFIED` | `UNVERIFIED` | `true` |
 
 ---
 
@@ -106,7 +131,7 @@ The complete project test suite was executed to guarantee **zero regressions**:
 1. **Verification Bot Test Suite**:
    ```text
    node --experimental-strip-types --test tests/verification-bot.test.mjs
-   # tests 22, pass 22, fail 0
+   # tests 25, pass 25, fail 0
    ```
 
 2. **Project Code Quality (ESLint)**:
@@ -121,10 +146,10 @@ The complete project test suite was executed to guarantee **zero regressions**:
    # 0 errors
    ```
 
-4. **Full Regression Test Suite (193 project tests + 22 bot tests)**:
+4. **Full Regression Test Suite (193 project tests + 25 bot tests)**:
    ```text
    npm test
-   # tests 215, pass 215, fail 0
+   # tests 218, pass 218, fail 0
    ```
 
 5. **Production Build Isolation**:

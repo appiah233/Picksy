@@ -474,9 +474,49 @@ test("Server Integration: End-to-end HTTP endpoints", async () => {
     const reportRes = await fetch("http://localhost:3099/api/v1/report");
     assert.equal(reportRes.status, 200);
     const reportText = await reportRes.text();
-    assert.ok(reportText.includes("PICKSY GITHUB VERIFICATION BOT REPORT"));
-    assert.ok(reportText.includes("CODEX"));
-    assert.ok(reportText.includes("GEMINI"));
+    assert.ok(reportText.includes("PICKSY VERIFICATION BOT"));
+    assert.ok(reportText.includes("Codex"));
+    assert.ok(reportText.includes("Gemini"));
+    assert.ok(reportText.includes("Repository: appiah233/Picksy"));
+
+    // 6. POST /api/v1/tasks without X-Owner-Token -> 401
+    const unauthTaskRes = await fetch("http://localhost:3099/api/v1/tasks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ taskId: "TASK-TEST", agent: "Codex" }),
+    });
+    assert.equal(unauthTaskRes.status, 401);
+
+    // 7. POST /api/v1/tasks with invalid X-Owner-Token -> 401
+    const badTokenTaskRes = await fetch("http://localhost:3099/api/v1/tasks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-owner-token": "wrong-token" },
+      body: JSON.stringify({ taskId: "TASK-TEST", agent: "Codex" }),
+    });
+    assert.equal(badTokenTaskRes.status, 401);
+
+    // 8. POST /api/v1/tasks with valid X-Owner-Token -> 201
+    const authTaskRes = await fetch("http://localhost:3099/api/v1/tasks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-owner-token": "test-owner-token-secret" },
+      body: JSON.stringify({ taskId: "TASK-DYNAMIC", agent: "Codex", branch: "feat/dynamic" }),
+    });
+    assert.equal(authTaskRes.status, 201);
+
+    // 9. Webhook with oversized body (> 2MB) -> 413
+    const hugeBody = "x".repeat(2_100_000);
+    const hugeSig = createHmac("sha256", WEBHOOK_SECRET).update(Buffer.from(hugeBody)).digest("hex");
+    const hugeRes = await fetch("http://localhost:3099/webhooks/github", {
+      method: "POST",
+      headers: {
+        "x-hub-signature-256": `sha256=${hugeSig}`,
+        "x-github-delivery": "huge-delivery-1",
+        "x-github-event": "push",
+        "Content-Type": "application/json",
+      },
+      body: hugeBody,
+    });
+    assert.equal(hugeRes.status, 413);
   } finally {
     await bot.stop();
   }
@@ -521,7 +561,7 @@ test("Unit helpers: path matching, diff parsing, webhook signing, and formatters
 
   // Formatters
   const ascii = formatAsciiReport({ policy, overallStatus: VERIFICATION_STATES.VERIFIED });
-  assert.ok(ascii.includes("PICKSY GITHUB VERIFICATION BOT REPORT"));
+  assert.ok(ascii.includes("PICKSY VERIFICATION BOT"));
 
   const snapshot = buildMobileStatusSnapshot({
     overallStatus: VERIFICATION_STATES.VERIFIED,
@@ -531,5 +571,33 @@ test("Unit helpers: path matching, diff parsing, webhook signing, and formatters
   });
   assert.equal(snapshot.app, "Picksy");
   assert.equal(snapshot.status, VERIFICATION_STATES.VERIFIED);
+});
+
+test("VerificationEngine: GitHub API error results in UNVERIFIED and requiresHumanReview", () => {
+  const engine = new VerificationEngine(policy);
+  const result = engine.verifyPullRequest({
+    prNumber: 99,
+    branch: "feat/some-feature",
+    headSha: "abcdef1234567890",
+    files: [],
+    checks: [],
+    apiError: "GitHub API HTTP 500: Internal Server Error",
+  });
+
+  assert.equal(result.state, VERIFICATION_STATES.UNVERIFIED);
+  assert.equal(result.requiresHumanReview, true);
+  assert.ok(result.reason.includes("GitHub API HTTP 500"));
+});
+
+test("VerificationEngine: Unregistered branch/PR resolves to UNKNOWN agent", () => {
+  const engine = new VerificationEngine(policy);
+  const resolved = engine.resolveAgentIdentity({
+    branch: "rogue-agent-branch",
+    prNumber: 999,
+  });
+
+  assert.equal(resolved.agentName, "UNKNOWN");
+  assert.equal(resolved.task, null);
+  assert.equal(resolved.isRegistered, false);
 });
 
