@@ -1,143 +1,237 @@
 import Link from "next/link";
+import {
+  ArrowRight,
+  ArrowUpRight,
+  Check,
+  ChevronRight,
+  PackageSearch,
+  Search,
+  ShieldCheck,
+  Sparkles,
+  Zap,
+} from "lucide-react";
 import { siteConfig } from "@/config/site";
 import { assertValidatedCatalog, type CatalogAccess } from "@/lib/catalog-access";
-import {
-  Workflow,
-  Search,
-  Mail,
-  GraduationCap,
-  Server,
-  ShieldCheck,
-  CheckCircle2,
-  ArrowRight,
-} from "lucide-react";
+import type { Category, Product } from "@/lib/catalog-types";
 
-const categoryIcons: Record<string, React.ReactNode> = {
-  Workflow: <Workflow className="h-6 w-6 text-zinc-800" />,
-  Search: <Search className="h-6 w-6 text-zinc-800" />,
-  Mail: <Mail className="h-6 w-6 text-zinc-800" />,
-  GraduationCap: <GraduationCap className="h-6 w-6 text-zinc-800" />,
-  Server: <Server className="h-6 w-6 text-zinc-800" />,
-  ShieldCheck: <ShieldCheck className="h-6 w-6 text-zinc-800" />,
-};
+function ProductCard({
+  product,
+  category,
+  catalog,
+  index,
+}: {
+  product: Product;
+  category: Category;
+  catalog: CatalogAccess;
+  index: number;
+}) {
+  const offer = catalog.getActiveOfferForProduct(product.id);
+  return (
+    <article className="picksy-product-card">
+      <div className={`picksy-product-art picksy-product-art-${index % 4}`}>
+        <span className="picksy-card-tag">Reviewed pick</span>
+        <PackageSearch aria-hidden="true" className="picksy-product-art-icon" strokeWidth={1.2} />
+      </div>
+      <div className="picksy-product-body">
+        <div className="picksy-card-meta">
+          <span>{category.name}</span>
+          {offer && <span className="picksy-merchant">{offer.merchant.name}</span>}
+        </div>
+        <h3>{product.name}</h3>
+        <p className="picksy-product-summary">{product.summary}</p>
+        <div className="picksy-product-bottom">
+          <span>{offer ? "Offer available" : "Editorial review"}</span>
+          <Link href={`/products/${product.slug}`} className="picksy-card-button">
+            View review <ArrowUpRight aria-hidden="true" size={14} />
+          </Link>
+        </div>
+      </div>
+    </article>
+  );
+}
 
-const trustPillars = [
-  {
-    title: "Clear Scope",
-    description: "Each published review will state the workflow and audience it covers.",
-  },
-  {
-    title: "Evidence and Dates",
-    description:
-      "Published findings will identify their sources, evaluation method, and review date.",
-  },
-  {
-    title: "Visible Limitations",
-    description: "Recommendations will describe who a product suits and where it falls short.",
-  },
-];
+function PreviewCard({ index }: { index: number }) {
+  return (
+    <article className="picksy-product-card picksy-preview-card">
+      <div className={`picksy-product-art picksy-product-art-${index}`}>
+        <span className="picksy-card-tag">Coming soon</span>
+        <PackageSearch aria-hidden="true" className="picksy-product-art-icon" strokeWidth={1.2} />
+        <span className="picksy-preview-number">0{index + 1}</span>
+      </div>
+      <div className="picksy-product-body">
+        <div className="picksy-card-meta">
+          <span>Future pick</span>
+          <span>Picksy</span>
+        </div>
+        <h3>New discovery on its way</h3>
+        <p className="picksy-product-summary">
+          Verified products will appear here after editorial review.
+        </p>
+        <div className="picksy-product-bottom">
+          <span>Awaiting publication</span>
+          <span className="picksy-card-button picksy-card-button-disabled">Stay tuned</span>
+        </div>
+      </div>
+    </article>
+  );
+}
 
-// Renders the home page from the given catalogue accessor.
+// Only validated, published catalogue records become product links or offers.
 export function renderHomePage(catalog: CatalogAccess) {
   assertValidatedCatalog(catalog);
-  const publishedCategories = new Map(
-    catalog
-      .getPublishedCategories()
-      .filter((category) => catalog.getPublishedProductsForCategory(category.id).length > 0)
-      .map((category) => [category.id, category] as const)
-  );
+  const publishedCategories = catalog
+    .getPublishedCategories()
+    .filter((category) => catalog.getPublishedProductsForCategory(category.id).length > 0);
+  const featured = publishedCategories
+    .flatMap((category) =>
+      catalog.getPublishedProductsForCategory(category.id).map((product) => ({ product, category }))
+    )
+    .slice(0, 4);
   return (
-    <div className="flex flex-col">
-      {/* 1. Hero Section */}
-      <section className="relative border-b border-zinc-200/80 bg-white px-4 py-20 sm:px-6 sm:py-28 lg:py-36">
-        <div className="mx-auto max-w-4xl text-center">
-          <div className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-medium text-zinc-600 mb-6">
-            <span>Software Discovery & Evaluation</span>
+    <div className="picksy-home">
+      <section className="picksy-hero" aria-labelledby="home-title">
+        <div className="picksy-hero-image" aria-hidden="true" />
+        <div className="picksy-container picksy-hero-content">
+          <div className="picksy-eyebrow">
+            <Sparkles aria-hidden="true" size={13} /> Product discovery platform
           </div>
-
-          <h1 className="text-4xl font-extrabold tracking-tight text-zinc-950 sm:text-5xl lg:text-6xl leading-[1.15]">
-            Find the Right Software. <span className="text-zinc-500">Faster.</span>
-          </h1>
-
-          <p className="mx-auto mt-6 max-w-2xl text-lg text-zinc-600 leading-relaxed sm:text-xl">
-            Picksy researches business software. Reviews appear here after their sources and claims
-            are verified. Explore our coverage areas below.
+          <h1 id="home-title">Discover What&apos;s Worth Buying.</h1>
+          <p className="picksy-hero-copy">
+            Picksy cuts through the noise. We research, compare, and recommend products so you can
+            shop with confidence.
           </p>
-
-          <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
-            <Link
-              href="#categories"
-              className="inline-flex items-center justify-center rounded-md bg-zinc-950 px-5 py-3 text-sm font-medium text-white shadow-sm transition-colors hover:bg-zinc-800 focus:outline-hidden focus:ring-2 focus:ring-zinc-950 focus:ring-offset-2"
-            >
-              Explore Categories
-              <ArrowRight className="ml-2 h-4 w-4" />
+          <div className="picksy-search" role="search">
+            <Search aria-hidden="true" size={19} />
+            <label htmlFor="picksy-search" className="sr-only">
+              Product search coming soon
+            </label>
+            <input
+              id="picksy-search"
+              type="search"
+              placeholder="Product search coming soon"
+              disabled
+            />
+            <button type="button" disabled>
+              Search
+            </button>
+          </div>
+          <div className="picksy-hero-actions">
+            <Link href="#products" className="picksy-button picksy-button-primary">
+              Explore Products <ArrowRight aria-hidden="true" size={17} />
             </Link>
-            <Link
-              href="#why-trust"
-              className="inline-flex items-center justify-center rounded-md border border-zinc-200 bg-white px-5 py-3 text-sm font-medium text-zinc-900 shadow-sm transition-colors hover:bg-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-zinc-950 focus:ring-offset-2"
-            >
-              Why Trust Picksy
+            <Link href="#deals" className="picksy-button picksy-button-quiet">
+              <Zap aria-hidden="true" size={17} /> Today&apos;s Deals
             </Link>
           </div>
         </div>
       </section>
 
-      {/* 2. Categories Section */}
-      <section
-        id="categories"
-        className="border-b border-zinc-200/80 bg-[#fcfcfd] px-4 py-20 sm:px-6 sm:py-24"
-      >
-        <div className="mx-auto max-w-6xl">
-          <div className="max-w-2xl">
-            <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
-              Coverage Areas
-            </p>
-            <h2 className="mt-2 text-3xl font-bold tracking-tight text-zinc-950 sm:text-4xl">
-              Software Coverage Areas
-            </h2>
-            <p className="mt-3 text-base text-zinc-600">
-              Reviewed categories link to published products. Other areas show planned coverage.
+      <div className="picksy-trust-strip">
+        <div className="picksy-container picksy-trust-grid">
+          <div>
+            <strong>{featured.length}</strong>
+            <span>Featured reviews</span>
+          </div>
+          <div>
+            <strong>Source-led</strong>
+            <span>Research standards</span>
+          </div>
+          <div>
+            <strong>Clear</strong>
+            <span>Affiliate disclosure</span>
+          </div>
+          <div>
+            <strong>Current</strong>
+            <span>Review dates shown</span>
+          </div>
+        </div>
+      </div>
+
+      <section id="products" className="picksy-section picksy-products-section">
+        <div className="picksy-container">
+          <div className="picksy-section-heading">
+            <div>
+              <span className="picksy-kicker">
+                {featured.length ? "Trending now" : "Coming soon"}
+              </span>
+              <h2>{featured.length ? "What Everyone's Buying" : "What’s worth discovering"}</h2>
+            </div>
+            <Link href="#categories" className="picksy-text-link">
+              View all <ChevronRight aria-hidden="true" size={16} />
+            </Link>
+          </div>
+          <p className="picksy-section-intro">
+            Explore researched products as our affiliate catalog grows.
+          </p>
+          <div className="picksy-product-grid">
+            {featured.map(({ product, category }, index) => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                category={category}
+                catalog={catalog}
+                index={index}
+              />
+            ))}
+            {Array.from({ length: 4 - featured.length }, (_, index) => (
+              <PreviewCard key={index} index={featured.length + index} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="deals" className="picksy-deals-section">
+        <div className="picksy-container picksy-deals-panel">
+          <div>
+            <span className="picksy-kicker">
+              <Zap aria-hidden="true" size={15} /> Best deals
+            </span>
+            <h2>Good finds are worth the wait.</h2>
+            <p>
+              Merchant offers will appear here when a reviewed product has an approved affiliate
+              destination.
             </p>
           </div>
+          <Link href="#products" className="picksy-button picksy-button-primary">
+            Explore picks <ArrowRight aria-hidden="true" size={17} />
+          </Link>
+        </div>
+      </section>
 
-          <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <section id="categories" className="picksy-section picksy-categories-section">
+        <div className="picksy-container">
+          <div className="picksy-section-heading">
+            <div>
+              <span className="picksy-kicker">Explore more</span>
+              <h2>Find your next favorite.</h2>
+            </div>
+          </div>
+          <div className="picksy-category-grid">
             {siteConfig.categories.map((category) => {
-              const publishedCategory = publishedCategories.get(category.id);
-              const isPublished = !!publishedCategory;
+              const published = publishedCategories.find((item) => item.id === category.id);
               const content = (
                 <>
-                  <div>
-                    <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-zinc-100 bg-zinc-50">
-                      {categoryIcons[category.iconName] ?? (
-                        <Workflow className="h-6 w-6 text-zinc-800" />
-                      )}
-                    </div>
-                    <h3 className="mt-5 text-lg font-semibold text-zinc-950">
-                      {publishedCategory?.name ?? category.name}
-                    </h3>
-                    <p className="mt-2 text-sm text-zinc-600 leading-relaxed">
-                      {publishedCategory?.description ?? category.description}
-                    </p>
-                  </div>
-                  <div className="mt-6 flex items-center text-xs font-medium text-zinc-500">
-                    <span>
-                      {isPublished ? "Explore reviewed products" : "Coverage coming soon"}
-                    </span>
-                  </div>
+                  <span className="picksy-category-icon">
+                    <PackageSearch aria-hidden="true" size={23} />
+                  </span>
+                  <h3>{published?.name ?? category.name}</h3>
+                  <p>{published?.description ?? category.description}</p>
+                  <span className="picksy-category-status">
+                    {published ? "Explore reviewed products" : "Coverage coming soon"}{" "}
+                    {published && <ArrowRight aria-hidden="true" size={16} />}
+                  </span>
                 </>
               );
-              const cardClass =
-                "relative flex min-w-0 flex-col justify-between rounded-xl border border-zinc-200 bg-white p-6 shadow-sm [overflow-wrap:anywhere]";
-              return isPublished ? (
+              return published ? (
                 <Link
                   key={category.id}
-                  href={`/categories/${publishedCategory.slug}`}
-                  className={`${cardClass} transition-colors hover:border-zinc-400 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2`}
+                  href={`/categories/${published.slug}`}
+                  className="picksy-category-card"
                 >
                   {content}
                 </Link>
               ) : (
-                <article key={category.id} className={cardClass}>
+                <article key={category.id} className="picksy-category-card">
                   {content}
                 </article>
               );
@@ -146,75 +240,38 @@ export function renderHomePage(catalog: CatalogAccess) {
         </div>
       </section>
 
-      {/* 3. Why Trust Picksy Section */}
-      <section
-        id="why-trust"
-        className="border-b border-zinc-200/80 bg-white px-4 py-20 sm:px-6 sm:py-24"
-      >
-        <div className="mx-auto max-w-6xl">
-          <div className="max-w-2xl">
-            <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
-              Our Methodology
-            </p>
-            <h2 className="mt-2 text-3xl font-bold tracking-tight text-zinc-950 sm:text-4xl">
-              Picksy Review Standards
-            </h2>
-            <p className="mt-3 text-base text-zinc-600">
-              Standards applied to each review before it is published.
+      <section id="why-trust" className="picksy-section picksy-method-section">
+        <div className="picksy-container picksy-method-grid">
+          <div>
+            <span className="picksy-kicker">The Picksy promise</span>
+            <h2>Great picks start with good questions.</h2>
+            <p>
+              We explain who a product suits, where it falls short, and the sources behind every
+              published recommendation.
             </p>
           </div>
-
-          <div className="mt-12 grid grid-cols-1 gap-8 md:grid-cols-3">
-            {trustPillars.map((pillar) => (
-              <div
-                key={pillar.title}
-                className="rounded-xl border border-zinc-200/80 bg-zinc-50/50 p-6"
-              >
-                <div className="flex items-center gap-2 text-zinc-900">
-                  <CheckCircle2 className="h-5 w-5 text-zinc-800" />
-                  <h3 className="text-base font-semibold">{pillar.title}</h3>
-                </div>
-                <p className="mt-3 text-sm text-zinc-600 leading-relaxed">{pillar.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* 4. Newsletter Placeholder Section */}
-      <section id="newsletter" className="bg-[#fcfcfd] px-4 py-20 sm:px-6 sm:py-24">
-        <div className="mx-auto max-w-4xl rounded-2xl border border-zinc-200 bg-white p-8 text-center shadow-sm sm:p-12">
-          <div className="mx-auto max-w-2xl">
-            <h2 className="text-2xl font-bold tracking-tight text-zinc-950 sm:text-3xl">
-              Stay Ahead on Software Intelligence
-            </h2>
-            <p className="mt-3 text-sm text-zinc-600 sm:text-base">
-              We plan to share researched software reviews and practical guidance here as coverage
-              develops.
-            </p>
-
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-center">
-              <label htmlFor="newsletter-email" className="sr-only">
-                Email address
-              </label>
-              <input
-                id="newsletter-email"
-                type="email"
-                disabled
-                placeholder="Enter your business email"
-                className="w-full rounded-md border border-zinc-300 bg-zinc-50 px-4 py-2.5 text-sm text-zinc-700 placeholder-zinc-400 focus:outline-hidden sm:w-80 cursor-not-allowed opacity-75"
-              />
-              <button
-                type="button"
-                disabled
-                className="inline-flex items-center justify-center rounded-md bg-zinc-950 px-5 py-2.5 text-sm font-medium text-white opacity-70 cursor-not-allowed shadow-sm"
-              >
-                Subscribe (Soon)
-              </button>
+          <div className="picksy-method-points">
+            <div>
+              <Search aria-hidden="true" />
+              <span>
+                <strong>Research first</strong>
+                <small>Published claims are checked against their sources.</small>
+              </span>
             </div>
-            <p className="mt-3 text-xs text-zinc-600">
-              Newsletter subscriptions are not available yet.
-            </p>
+            <div>
+              <ShieldCheck aria-hidden="true" />
+              <span>
+                <strong>Honest limitations</strong>
+                <small>Every review makes tradeoffs easy to see.</small>
+              </span>
+            </div>
+            <div>
+              <Check aria-hidden="true" />
+              <span>
+                <strong>Clear offers</strong>
+                <small>Affiliate links are labeled and use approved destinations.</small>
+              </span>
+            </div>
           </div>
         </div>
       </section>
