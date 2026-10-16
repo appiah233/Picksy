@@ -558,7 +558,7 @@ test("Server uses GitHub files instead of webhook supplied files for verificatio
   const githubClient = {
     async getPullRequest(number) {
       calls.push("pr");
-      return { ok: true, data: { number, head: { sha, ref: "feat/real" }, title: "Real PR", body: "" } };
+      return { ok: true, data: { number, head: { sha, ref: "feat/real" }, changed_files: 1, title: "Real PR", body: "" } };
     },
     async getPullRequestFiles() {
       calls.push("files");
@@ -602,7 +602,7 @@ test("Server fails closed when GitHub file pagination leaves scope incomplete", 
   const sha = "b".repeat(40);
   const githubClient = {
     async getPullRequest(number) {
-      return { ok: true, data: { number, head: { sha, ref: "feat/large" }, title: "Large PR", body: "" } };
+      return { ok: true, data: { number, head: { sha, ref: "feat/large" }, changed_files: 2, title: "Large PR", body: "" } };
     },
     async getPullRequestFiles() {
       return { ok: true, hasNextPage: true, data: [{ filename: "package.json" }] };
