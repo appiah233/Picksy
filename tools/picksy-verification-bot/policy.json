@@ -2,7 +2,6 @@
   "version": "1.0.0",
   "project": "Picksy",
   "repository": "appiah233/Picksy",
-  "ownerToken": "test-owner-token-secret",
   "specialConditions": {
     "mvpReleaseApproved": false,
     "gate3Status": "BLOCKED_BY_OWNER_BUSINESS_EVIDENCE",

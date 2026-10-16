@@ -419,6 +419,7 @@ test("Server Integration: End-to-end HTTP endpoints", async () => {
   const bot = createVerificationBotServer({
     port: 3099,
     webhookSecret: WEBHOOK_SECRET,
+    ownerToken: "test-owner-token-secret",
   });
 
   await bot.start();
@@ -520,6 +521,81 @@ test("Server Integration: End-to-end HTTP endpoints", async () => {
   } finally {
     await bot.stop();
   }
+});
+
+test("Server rejects missing secrets and mismatched signed event shape", async () => {
+  assert.throws(() => createVerificationBotServer({ webhookSecret: "", ownerToken: "owner" }), /webhook secret/i);
+  assert.throws(() => createVerificationBotServer({ webhookSecret: "webhook", ownerToken: "" }), /owner token/i);
+
+  const bot = createVerificationBotServer({
+    port: 3100,
+    webhookSecret: WEBHOOK_SECRET,
+    ownerToken: "test-owner-token-secret",
+  });
+  await bot.start();
+  try {
+    const body = JSON.stringify({ ref: "refs/heads/main", commits: [], pusher: { name: "owner" } });
+    const signature = createHmac("sha256", WEBHOOK_SECRET).update(Buffer.from(body)).digest("hex");
+    const response = await fetch("http://localhost:3100/webhooks/github", {
+      method: "POST",
+      headers: {
+        "x-hub-signature-256": `sha256=${signature}`,
+        "x-github-delivery": "mismatched-event",
+        "x-github-event": "pull_request",
+        "Content-Type": "application/json",
+      },
+      body,
+    });
+    assert.equal(response.status, 400);
+  } finally {
+    await bot.stop();
+  }
+});
+
+test("Server uses GitHub files instead of webhook supplied files for verification", async () => {
+  const sha = "a".repeat(40);
+  const calls = [];
+  const githubClient = {
+    async getPullRequest(number) {
+      calls.push("pr");
+      return { ok: true, data: { number, head: { sha, ref: "feat/real" }, title: "Real PR", body: "" } };
+    },
+    async getPullRequestFiles() {
+      calls.push("files");
+      return { ok: true, data: [{ filename: "src/app/page.tsx" }] };
+    },
+    async getCommitCheckRuns() {
+      calls.push("checks");
+      return { ok: true, data: { check_runs: mockPassingChecks() } };
+    },
+  };
+  const bot = createVerificationBotServer({ port: 3101, webhookSecret: WEBHOOK_SECRET, ownerToken: "owner", githubClient });
+  await bot.start();
+  try {
+    const body = JSON.stringify({ pull_request: { number: 9, head: { sha, ref: "feat/spoof" } }, files: [{ filename: "package.json" }], diff: "spoof" });
+    const signature = createHmac("sha256", WEBHOOK_SECRET).update(Buffer.from(body)).digest("hex");
+    const response = await fetch("http://localhost:3101/webhooks/github", {
+      method: "POST",
+      headers: { "x-hub-signature-256": `sha256=${signature}`, "x-github-event": "pull_request", "Content-Type": "application/json" },
+      body,
+    });
+    assert.equal(response.status, 200);
+    const result = await response.json();
+    assert.deepEqual(calls, ["pr", "files", "checks"]);
+    assert.deepEqual(result.verification.scope.classifications.map((item) => item.file), ["src/app/page.tsx"]);
+    assert.equal(result.verification.branch, "feat/real");
+  } finally {
+    await bot.stop();
+  }
+});
+
+test("GitHub client rejects unsafe PR identifiers and commit SHAs without fetching", async () => {
+  let fetches = 0;
+  const client = new GitHubClient({ fetchImpl: async () => { fetches++; throw new Error("unexpected fetch"); } });
+  assert.equal((await client.getPullRequestFiles("1/../../repos/other")).ok, false);
+  assert.equal((await client.getPullRequest(0)).ok, false);
+  assert.equal((await client.getCommitCheckRuns("main?per_page=1")).ok, false);
+  assert.equal(fetches, 0);
 });
 
 test("Unit helpers: path matching, diff parsing, webhook signing, and formatters", () => {

@@ -2,6 +2,14 @@ const DEFAULT_BASE_URL = "https://api.github.com";
 const DEFAULT_TIMEOUT_MS = 10_000;
 const MAX_RESPONSE_BYTES = 5_000_000; // 5 MB cap to prevent memory exhaustion
 
+function validPullNumber(value) {
+  return Number.isSafeInteger(value) && value > 0;
+}
+
+function validSha(value) {
+  return typeof value === "string" && /^[a-f0-9]{40}$/i.test(value);
+}
+
 export class GitHubApiError extends Error {
   constructor(message, { status, endpoint, details } = {}) {
     super(message);
@@ -123,10 +131,12 @@ export class GitHubClient {
   }
 
   async getPullRequest(pullNumber) {
+    if (!validPullNumber(pullNumber)) return { ok: false, status: 400, error: "Invalid pull request number" };
     return this._get(`/repos/${this.owner}/${this.repo}/pulls/${pullNumber}`);
   }
 
   async getPullRequestFiles(pullNumber) {
+    if (!validPullNumber(pullNumber)) return { ok: false, status: 400, error: "Invalid pull request number" };
     return this._get(`/repos/${this.owner}/${this.repo}/pulls/${pullNumber}/files`);
   }
 
@@ -139,6 +149,7 @@ export class GitHubClient {
   }
 
   async getCommitCheckRuns(ref) {
+    if (!validSha(ref)) return { ok: false, status: 400, error: "Invalid commit SHA" };
     return this._get(`/repos/${this.owner}/${this.repo}/commits/${ref}/check-runs`);
   }
 

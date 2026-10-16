@@ -51,6 +51,8 @@ The **Picksy GitHub Verification Bot** is a lightweight, zero-dependency, fail-c
 - `formatter.mjs`: ASCII text report formatter and mobile-friendly PWA snapshot projector.
 - `server.mjs`: Standalone HTTP server and REST API.
 
+Set `GITHUB_WEBHOOK_SECRET` and `VERIFICATION_BOT_OWNER_TOKEN` as private environment variables before starting the server. Startup fails if either is missing. Never store these values in `policy.json`.
+
 ---
 
 ## 4. API Endpoints

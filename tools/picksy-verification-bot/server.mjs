@@ -59,10 +59,17 @@ function sendText(res, statusCode, text) {
 
 export function createVerificationBotServer({
   policy = loadPolicy(),
-  webhookSecret = process.env.GITHUB_WEBHOOK_SECRET || "test-verification-secret",
+  webhookSecret = process.env.GITHUB_WEBHOOK_SECRET,
+  ownerToken = process.env.VERIFICATION_BOT_OWNER_TOKEN,
   githubClient = new GitHubClient(),
   port = 3001,
 } = {}) {
+  if (typeof webhookSecret !== "string" || !webhookSecret) {
+    throw new Error("A webhook secret is required");
+  }
+  if (typeof ownerToken !== "string" || !ownerToken) {
+    throw new Error("An owner token is required");
+  }
   const engine = new VerificationEngine(policy);
   const auditLog = new AuditLog();
   const deliveryTracker = new DeliveryTracker();
@@ -126,52 +133,74 @@ export function createVerificationBotServer({
           return sendJson(res, 400, { error: "Invalid JSON payload" });
         }
 
+        // The event header is not part of GitHub's signed body. Reject a header
+        // that does not match the authenticated payload before dispatching it.
+        if (eventType === "pull_request" &&
+            (typeof payload?.pull_request !== "object" || payload.pull_request === null ||
+              !Number.isSafeInteger(payload.pull_request.number) || payload.pull_request.number < 1 ||
+              !/^[a-f0-9]{40}$/i.test(payload.pull_request.head?.sha || ""))) {
+          return sendJson(res, 400, { error: "Invalid pull request event payload" });
+        }
+        if (eventType === "push" &&
+            (typeof payload?.ref !== "string" || !payload.ref.startsWith("refs/heads/") ||
+              !Array.isArray(payload.commits))) {
+          return sendJson(res, 400, { error: "Invalid push event payload" });
+        }
+
         const classified = classifyWebhookEvent(eventType, payload);
 
         // Process Event
         let responseData = { status: "processed", eventType };
 
         if (classified.type === "pull_request") {
-          // Strictly resolve agent identity from registered task metadata
-          const branch = classified.headRef || "";
+          // A webhook is a trigger, not evidence of changed files or checks.
+          // Fetch the current PR and its files from GitHub before verification.
+          const prRes = githubClient ? await githubClient.getPullRequest(classified.number) : { ok: false, error: "GitHub client unavailable" };
+          const pr = prRes.ok ? prRes.data : null;
+          let apiError = prRes.ok ? null : prRes.error || "Failed to fetch pull request";
+          if (pr && (pr.number !== classified.number || !/^[a-f0-9]{40}$/i.test(pr.head?.sha || ""))) {
+            apiError = "GitHub returned invalid pull request metadata";
+          }
+          if (pr && pr.head?.sha !== classified.headSha) {
+            apiError = "Webhook head SHA differs from current GitHub pull request";
+          }
+          const branch = pr?.head?.ref || "";
           const idRes = engine.resolveAgentIdentity({
             branch,
             prNumber: classified.number,
           });
           const agentName = idRes.agentName; // "Codex", "Gemini", or "UNKNOWN"
 
-          // Fetch files & checks via client if not in payload
-          let files = (payload.files || []).map((f) => f.filename || f);
-          let apiError = null;
-          if (files.length === 0 && githubClient) {
+          let files = [];
+          if (!apiError && githubClient) {
             const filesRes = await githubClient.getPullRequestFiles(classified.number);
             if (filesRes.ok && Array.isArray(filesRes.data)) {
               files = filesRes.data.map((f) => f.filename);
-            } else if (!filesRes.ok) {
+            } else {
               apiError = filesRes.error || `Failed to fetch PR files: status ${filesRes.status}`;
             }
           }
 
           let checkRuns = [];
-          if (githubClient && classified.headSha) {
-            const checksRes = await githubClient.getCommitCheckRuns(classified.headSha);
+          if (!apiError && githubClient) {
+            const checksRes = await githubClient.getCommitCheckRuns(pr.head.sha);
             if (checksRes.ok && Array.isArray(checksRes.data?.check_runs)) {
               checkRuns = checksRes.data.check_runs;
-            } else if (!checksRes.ok && !apiError) {
+            } else {
               apiError = checksRes.error || `Failed to fetch check runs: status ${checksRes.status}`;
             }
           }
 
           const verification = engine.verifyPullRequest({
             prNumber: classified.number,
-            headSha: classified.headSha,
+            headSha: pr?.head?.sha || classified.headSha,
             agentName,
             branch,
             files,
-            diff: payload.diff || "",
+            diff: "",
             checkRuns,
-            title: classified.title,
-            description: classified.body,
+            title: pr?.title || "",
+            description: pr?.body || "",
             apiError,
           });
 
@@ -182,7 +211,7 @@ export function createVerificationBotServer({
             reference: `PR #${classified.number}`,
             githubFacts: {
               prNumber: classified.number,
-              headSha: classified.headSha,
+              headSha: pr?.head?.sha || classified.headSha,
               files,
               checksCount: checkRuns.length,
             },
@@ -257,7 +286,7 @@ export function createVerificationBotServer({
         }
         if (method === "POST") {
           const ownerTokenHeader = req.headers["x-owner-token"];
-          const expectedToken = process.env.VERIFICATION_BOT_OWNER_TOKEN || policy.ownerToken || "test-owner-token-secret";
+          const expectedToken = ownerToken;
 
           let isAuthorized = false;
           if (ownerTokenHeader && typeof ownerTokenHeader === "string") {
