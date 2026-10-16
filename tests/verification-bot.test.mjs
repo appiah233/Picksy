@@ -598,6 +598,37 @@ test("GitHub client rejects unsafe PR identifiers and commit SHAs without fetchi
   assert.equal(fetches, 0);
 });
 
+test("Server fails closed when GitHub file pagination leaves scope incomplete", async () => {
+  const sha = "b".repeat(40);
+  const githubClient = {
+    async getPullRequest(number) {
+      return { ok: true, data: { number, head: { sha, ref: "feat/large" }, title: "Large PR", body: "" } };
+    },
+    async getPullRequestFiles() {
+      return { ok: true, hasNextPage: true, data: [{ filename: "package.json" }] };
+    },
+  };
+  const bot = createVerificationBotServer({ port: 3102, webhookSecret: WEBHOOK_SECRET, ownerToken: "owner", githubClient });
+  await bot.start();
+  try {
+    const body = JSON.stringify({ pull_request: { number: 9, head: { sha } }, files: [{ filename: "package.json" }] });
+    const signature = createHmac("sha256", WEBHOOK_SECRET).update(Buffer.from(body)).digest("hex");
+    const response = await fetch("http://localhost:3102/webhooks/github", {
+      method: "POST",
+      headers: { "x-hub-signature-256": `sha256=${signature}`, "x-github-event": "pull_request", "Content-Type": "application/json" },
+      body,
+    });
+    assert.equal(response.status, 200);
+    const result = await response.json();
+    assert.equal(result.verification.state, VERIFICATION_STATES.UNVERIFIED);
+    assert.equal(result.status, "unverified");
+    assert.equal(result.verification.requiresHumanReview, true);
+    assert.deepEqual(result.verification.scope.classifications, []);
+  } finally {
+    await bot.stop();
+  }
+});
+
 test("Unit helpers: path matching, diff parsing, webhook signing, and formatters", () => {
   // Path matching
   assert.equal(matchPathPattern("src/lib/importer/pipeline.ts", "src/lib/**"), true);

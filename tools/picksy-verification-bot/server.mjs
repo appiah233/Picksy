@@ -156,8 +156,8 @@ export function createVerificationBotServer({
           // A webhook is a trigger, not evidence of changed files or checks.
           // Fetch the current PR and its files from GitHub before verification.
           const prRes = githubClient ? await githubClient.getPullRequest(classified.number) : { ok: false, error: "GitHub client unavailable" };
-          const pr = prRes.ok ? prRes.data : null;
-          let apiError = prRes.ok ? null : prRes.error || "Failed to fetch pull request";
+          const pr = prRes.ok && prRes.data && typeof prRes.data === "object" ? prRes.data : null;
+          let apiError = pr ? null : prRes.error || "Failed to fetch pull request";
           if (pr && (pr.number !== classified.number || !/^[a-f0-9]{40}$/i.test(pr.head?.sha || ""))) {
             apiError = "GitHub returned invalid pull request metadata";
           }
@@ -174,20 +174,20 @@ export function createVerificationBotServer({
           let files = [];
           if (!apiError && githubClient) {
             const filesRes = await githubClient.getPullRequestFiles(classified.number);
-            if (filesRes.ok && Array.isArray(filesRes.data)) {
+            if (filesRes.ok && Array.isArray(filesRes.data) && !filesRes.hasNextPage) {
               files = filesRes.data.map((f) => f.filename);
             } else {
-              apiError = filesRes.error || `Failed to fetch PR files: status ${filesRes.status}`;
+              apiError = filesRes.hasNextPage ? "PR file list is paginated; cannot verify incomplete scope" : filesRes.error || `Failed to fetch PR files: status ${filesRes.status}`;
             }
           }
 
           let checkRuns = [];
           if (!apiError && githubClient) {
             const checksRes = await githubClient.getCommitCheckRuns(pr.head.sha);
-            if (checksRes.ok && Array.isArray(checksRes.data?.check_runs)) {
+            if (checksRes.ok && Array.isArray(checksRes.data?.check_runs) && !checksRes.hasNextPage) {
               checkRuns = checksRes.data.check_runs;
             } else {
-              apiError = checksRes.error || `Failed to fetch check runs: status ${checksRes.status}`;
+              apiError = checksRes.hasNextPage ? "Check run list is paginated; cannot verify incomplete checks" : checksRes.error || `Failed to fetch check runs: status ${checksRes.status}`;
             }
           }
 
@@ -219,7 +219,7 @@ export function createVerificationBotServer({
             requiresHumanReview: verification.requiresHumanReview,
           });
 
-          responseData = { status: "verified", verification };
+          responseData = { status: verification.state.toLowerCase(), verification };
         } else if (classified.type === "push") {
           const pushEval = engine.evaluateMainBranchPush({
             branch: classified.branch,

@@ -117,7 +117,8 @@ export class GitHubClient {
       }
 
       const data = await response.json();
-      return { ok: true, status: response.status, data };
+      const hasNextPage = /<[^>]+>;\s*rel="next"/.test(response.headers.get("link") || "");
+      return { ok: true, status: response.status, data, hasNextPage };
     } catch (err) {
       clearTimeout(timer);
       const isAbort = err.name === "AbortError";
