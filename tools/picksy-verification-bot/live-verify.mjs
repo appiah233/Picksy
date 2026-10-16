@@ -114,7 +114,26 @@ export async function runLiveGitHubVerification({
   const alertsRes = await client.getCodeScanningAlerts();
   const alertsCount = (alertsRes.ok && Array.isArray(alertsRes.data)) ? alertsRes.data.length : 0;
 
-  // 7. Format ASCII report
+  // 7. Escalations
+  const escalations = [];
+  if (pr7Eval?.requiresHumanReview) {
+    escalations.push({
+      eventType: "PR_SECURITY_FAILURE",
+      reference: "PR #7",
+      agent: "Codex",
+      botConclusions: { overallScope: pr7Eval.scope?.overallScope, summary: "PR #7 dependency audit failure" },
+    });
+  }
+  if (pr3Eval?.requiresHumanReview) {
+    escalations.push({
+      eventType: "UNKNOWN_TASK_OWNERSHIP",
+      reference: "PR #3",
+      agent: "UNKNOWN",
+      botConclusions: { overallScope: "UNKNOWN", summary: "PR #3 unknown agent ownership" },
+    });
+  }
+
+  // 8. Format ASCII report
   const asciiReport = formatAsciiReport({
     policy,
     observedMainSha: mainSha,
@@ -123,10 +142,8 @@ export async function runLiveGitHubVerification({
     crossAgentConflicts: [],
     mainBranchEvents: [],
     specialConditions: policy.specialConditions,
-    escalations: (pr7Eval?.requiresHumanReview || pr3Eval?.requiresHumanReview) ? [
-      { eventType: "LIVE_PR_EVAL", reference: "PR #7", botConclusions: { summary: "PR #7 dependency audit failure" } },
-      { eventType: "LIVE_PR_EVAL", reference: "PR #3", botConclusions: { summary: "PR #3 unknown agent ownership" } },
-    ] : [],
+    escalations,
+    codeScanningAlertsCount: alertsCount,
   });
 
   return {
@@ -143,6 +160,26 @@ export async function runLiveGitHubVerification({
 if (process.argv[1] && process.argv[1].endsWith("live-verify.mjs")) {
   runLiveGitHubVerification().then((result) => {
     console.log("\n" + result.asciiReport);
+
+    console.log("\nSECTION 3: PER-CHECK CORRELATION TABLE FOR PR #7 & PR #8:");
+    const correlationRows = [];
+    for (const prItem of [{ num: 7, evalRes: result.pr7 }, { num: 8, evalRes: result.pr8 }]) {
+      const sha = prItem.evalRes?.headSha || "N/A";
+      for (const check of (prItem.evalRes?.checks?.checks || [])) {
+        correlationRows.push({
+          PR: `#${prItem.num}`,
+          "CHECK NAME": check.name,
+          EXPECTED: "success",
+          FOUND: check.conclusion || check.status || "not_run",
+          STATUS: check.status || "completed",
+          CONCLUSION: check.conclusion || "N/A",
+          "COMMIT SHA": sha.slice(0, 7),
+          "EVIDENCE SOURCE": "GitHub Actions Check Run",
+        });
+      }
+    }
+    console.table(correlationRows);
+
     console.log("\nLIVE REPOSITORY CHECKS CORRELATION TABLE:");
     console.table([
       { PR: 7, Branch: result.pr7?.branch || "fix/strict-release-dependency-gate", Agent: result.pr7?.agentName, Scope: result.pr7?.scope?.overallScope, Checks: result.pr7?.checks?.overallState, Verdict: result.pr7?.state, HumanReview: result.pr7?.requiresHumanReview },

@@ -154,7 +154,8 @@ export class GitHubClient {
     return this._get(`/repos/${this.owner}/${this.repo}/compare/${base}...${head}`);
   }
 
-  async getCodeScanningAlerts() {
-    return this._get(`/repos/${this.owner}/${this.repo}/code-scanning/alerts`);
+  async getCodeScanningAlerts(state = "open") {
+    const query = state ? `?state=${encodeURIComponent(state)}` : "";
+    return this._get(`/repos/${this.owner}/${this.repo}/code-scanning/alerts${query}`);
   }
 }

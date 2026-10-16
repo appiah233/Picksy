@@ -13,6 +13,7 @@ export function formatAsciiReport({
   specialConditions = policy.specialConditions || {},
   escalations = [],
   tasks = policy.tasks || [],
+  codeScanningAlertsCount = null,
 }) {
   const lines = [];
   const divider = "--------------------------------";
@@ -30,8 +31,11 @@ export function formatAsciiReport({
   // SECTION: Codex
   lines.push("Codex");
   lines.push(divider);
-  const codexTask = tasks.find((t) => t.agent === "Codex" && t.status !== "COMPLETED") ||
-    tasks.find((t) => t.agent === "Codex") || { taskId: "TASK-CODEX", objective: "Backend/Security" };
+  const codexTask = codexVerification?.matchedTask ||
+    tasks.find((t) => (codexVerification?.prNumber && t.pullRequest === codexVerification.prNumber) || (codexVerification?.branch && t.branch === codexVerification.branch)) ||
+    tasks.find((t) => t.agent === "Codex" && t.status !== "COMPLETED") ||
+    tasks.find((t) => t.agent === "Codex") ||
+    { taskId: "TASK-CODEX", objective: "Backend/Security" };
 
   if (!codexVerification) {
     lines.push(`Task: ${codexTask.taskId} (${codexTask.objective})`);
@@ -69,8 +73,11 @@ export function formatAsciiReport({
   // SECTION: Gemini
   lines.push("Gemini");
   lines.push(divider);
-  const geminiTask = tasks.find((t) => t.agent === "Gemini" && t.status !== "COMPLETED") ||
-    tasks.find((t) => t.agent === "Gemini") || { taskId: "TASK-GEMINI", objective: "Design/Frontend" };
+  const geminiTask = geminiVerification?.matchedTask ||
+    tasks.find((t) => (geminiVerification?.prNumber && t.pullRequest === geminiVerification.prNumber) || (geminiVerification?.branch && t.branch === geminiVerification.branch)) ||
+    tasks.find((t) => t.agent === "Gemini" && t.status !== "COMPLETED") ||
+    tasks.find((t) => t.agent === "Gemini") ||
+    { taskId: "TASK-GEMINI", objective: "Design/Frontend" };
 
   if (!geminiVerification) {
     lines.push(`Task: ${geminiTask.taskId} (${geminiTask.objective})`);
@@ -124,7 +131,17 @@ export function formatAsciiReport({
   lines.push(divider);
   lines.push(`Gate 3: ${specialConditions.gate3Status || "BLOCKED_BY_OWNER_BUSINESS_EVIDENCE"}`);
   lines.push(`Dependency security: ${specialConditions.specialPullRequests?.["7"]?.status === "TRACKED" ? "Fail-closed (tracked PR #7)" : "Verified"}`);
-  lines.push(`CodeQL: PASS (0 alerts)`);
+  let codeQlSummary = "PASS (0 alerts)";
+  if (codeScanningAlertsCount !== null && codeScanningAlertsCount !== undefined) {
+    codeQlSummary = codeScanningAlertsCount === 0
+      ? "PASS (0 alerts)"
+      : `${codeScanningAlertsCount} open alert(s) under triage/remediation`;
+  } else if (specialConditions.openCodeQlAlerts !== undefined) {
+    codeQlSummary = specialConditions.openCodeQlAlerts === 0
+      ? "PASS (0 alerts)"
+      : `${specialConditions.openCodeQlAlerts} open alert(s) under triage/remediation`;
+  }
+  lines.push(`CodeQL: ${codeQlSummary}`);
   lines.push(`Release approved: ${specialConditions.mvpReleaseApproved ? "YES" : "NO (Blocked by Owner)"}`);
   lines.push(`Release tag allowed: ${specialConditions.releaseTagAllowed ? "YES" : "NO (Blocked)"}`);
 

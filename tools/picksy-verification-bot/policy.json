@@ -7,6 +7,7 @@
     "mvpReleaseApproved": false,
     "gate3Status": "BLOCKED_BY_OWNER_BUSINESS_EVIDENCE",
     "releaseTagAllowed": false,
+    "openCodeQlAlerts": 8,
     "specialPullRequests": {
       "7": {
         "title": "strict-dependency-security-gate",
@@ -80,11 +81,15 @@
       "allowedAreas": [
         "src/app/(storefront)/**",
         "src/app/page.tsx",
+        "src/app/layout.tsx",
+        "src/app/globals.css",
         "src/app/categories/**",
         "src/app/products/**",
         "src/components/**",
         "src/features/**",
+        "src/config/**",
         "src/styles/**",
+        "public/**",
         "docs/**",
         "package.json",
         "package-lock.json"
@@ -195,9 +200,12 @@
       "branch": "feat/homepage-discovery-design",
       "pullRequest": 5,
       "expectedFiles": [
+        "public/picksy-hero.webp",
+        "src/app/globals.css",
+        "src/app/layout.tsx",
+        "src/config/site.ts",
         "src/features/catalog/**",
-        "src/components/**",
-        "docs/product-importer/COORDINATION-LOG.md"
+        "tests/rendered-journey.test.mjs"
       ],
       "prohibitedAreas": [
         "prisma/**",

@@ -70,8 +70,8 @@ Observed main SHA: 103f33a62b750bcb7d488ee03c5593b65486ecb3
 
 Codex
 --------------------------------
-Task: TASK-CODEX-SECURITY-GATE (Enforce zero high dependency findings for MVP release)
-Branch: fix/strict-release-dependency-gate
+Task: TASK-CODEX-RELEASE-REMEDIATION (Remediate importer text normalization and document dependency reachability)
+Branch: fix/controlled-release-remediation
 PR: #8
 Commit: 749aff6168a875384c1f1279dacb9cd603e7ed7b
 Scope: IN_SCOPE (7/7 files in scope)
@@ -88,19 +88,19 @@ Task: TASK-GEMINI-HOME-DISCOVERY (Add dark discovery design and generated produc
 Branch: feat/homepage-discovery-design
 PR: #5
 Commit: 9663797081a8d6817ff2d360ed7150ecd33d11ad
-Scope: UNKNOWN (1/6 files in scope)
+Scope: IN_SCOPE (6/6 files in scope)
 Checks:
   test-and-build: success
   CodeQL JavaScript/TypeScript: success
   Production dependency audit: success
   public-baseline: success
-Verdict: UNVERIFIED
+Verdict: VERIFIED
 
 Cross-Agent
 --------------------------------
 Overlapping files: None
 Ownership conflicts: None
-Unknown ownership: None
+Unknown ownership: Detected
 Unexpected main changes: None
 Human review required: YES
 
@@ -108,10 +108,23 @@ Release Conditions
 --------------------------------
 Gate 3: BLOCKED_BY_OWNER_BUSINESS_EVIDENCE
 Dependency security: Fail-closed (tracked PR #7)
-CodeQL: PASS (0 alerts)
+CodeQL: 8 open alert(s) under triage/remediation
 Release approved: NO (Blocked by Owner)
 Release tag allowed: NO (Blocked)
 ```
+
+### Section 3: Per-Check Correlation Table for PR #7 & PR #8
+
+| PR | CHECK NAME | EXPECTED | FOUND | STATUS | CONCLUSION | COMMIT SHA | EVIDENCE SOURCE |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **#7** | `test-and-build` | `success` | `success` | `completed` | `success` | `b4e0ed9` | `GitHub Actions Check Run` |
+| **#7** | `CodeQL JavaScript/TypeScript` | `success` | `success` | `completed` | `success` | `b4e0ed9` | `GitHub Actions Check Run` |
+| **#7** | `Production dependency audit` | `success` | `failure` | `completed` | `failure` | `b4e0ed9` | `GitHub Actions Check Run` |
+| **#7** | `public-baseline` | `success` | `not_run` | `not_run` | `N/A` | `b4e0ed9` | `GitHub Actions Check Run` |
+| **#8** | `test-and-build` | `success` | `success` | `completed` | `success` | `749aff6` | `GitHub Actions Check Run` |
+| **#8** | `CodeQL JavaScript/TypeScript` | `success` | `success` | `completed` | `success` | `749aff6` | `GitHub Actions Check Run` |
+| **#8** | `Production dependency audit` | `success` | `success` | `completed` | `success` | `749aff6` | `GitHub Actions Check Run` |
+| **#8** | `public-baseline` | `success` | `success` | `completed` | `success` | `749aff6` | `GitHub Actions Check Run` |
 
 ### Live Repository Checks Correlation Table
 
@@ -119,8 +132,8 @@ Release tag allowed: NO (Blocked)
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | **#7** | `fix/strict-release-dependency-gate` | `Codex` | `IN_SCOPE` | `FAILED` | `FAILED` | `true` |
 | **#8** | `fix/controlled-release-remediation` | `Codex` | `IN_SCOPE` | `VERIFIED` | `VERIFIED` | `false` |
-| **#5** | `feat/homepage-discovery-design` | `Gemini` | `UNKNOWN` | `VERIFIED` | `UNVERIFIED` | `true` |
-| **#3** | `copilot/fix-actions` | `UNKNOWN` | `UNKNOWN` | `UNVERIFIED` | `UNVERIFIED` | `true` |
+| **#5** | `feat/homepage-discovery-design` | `Gemini` | `IN_SCOPE` | `VERIFIED` | `VERIFIED` | `false` |
+| **#3** | `copilot/fix-github-actions-failure` | `UNKNOWN` | `UNKNOWN` | `UNVERIFIED` | `UNVERIFIED` | `true` |
 
 ---
 

@@ -527,8 +527,9 @@ export class VerificationEngine {
   }) {
     // 1. Resolve agent identity strictly from registered task metadata if not explicitly provided
     let resolvedAgent = agentName;
+    const idRes = this.resolveAgentIdentity({ branch, prNumber, taskId });
+    const matchedTask = idRes.matchedTask;
     if (!resolvedAgent || resolvedAgent === "UNKNOWN") {
-      const idRes = this.resolveAgentIdentity({ branch, prNumber, taskId });
       resolvedAgent = idRes.agentName;
     }
 
@@ -603,7 +604,9 @@ export class VerificationEngine {
     const result = {
       prNumber,
       headSha,
+      branch,
       agentName: resolvedAgent,
+      matchedTask,
       state: finalState,
       requiresHumanReview,
       scope: scopeEval,
