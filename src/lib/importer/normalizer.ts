@@ -11,7 +11,7 @@ export function sanitizeText(input: unknown): { text: string; hadHtml: boolean }
   }
 
   const raw = input.trim();
-  const document = parse(raw, { script: true, style: true });
+  const document = parse(raw);
   for (const tag of ["script", "style"]) {
     document.querySelectorAll(tag).forEach((element) => element.remove());
   }
