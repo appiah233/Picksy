@@ -174,10 +174,12 @@ export function createVerificationBotServer({
           let files = [];
           if (!apiError && githubClient) {
             const filesRes = await githubClient.getPullRequestFiles(classified.number);
-            if (filesRes.ok && Array.isArray(filesRes.data) && !filesRes.hasNextPage) {
+            if (filesRes.ok && Array.isArray(filesRes.data) && !filesRes.hasNextPage &&
+                filesRes.data.every((file) => typeof file?.filename === "string" && file.filename.length > 0) &&
+                (!Number.isSafeInteger(pr.changed_files) || filesRes.data.length === pr.changed_files)) {
               files = filesRes.data.map((f) => f.filename);
             } else {
-              apiError = filesRes.hasNextPage ? "PR file list is paginated; cannot verify incomplete scope" : filesRes.error || `Failed to fetch PR files: status ${filesRes.status}`;
+              apiError = filesRes.hasNextPage ? "PR file list is paginated; cannot verify incomplete scope" : filesRes.error || "Incomplete or invalid PR file list";
             }
           }
 
