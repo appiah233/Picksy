@@ -15,16 +15,6 @@ on:
       - ".github/scripts/check-zap-report.py"
   pull_request:
     branches: [main, develop]
-    paths:
-      - "src/**"
-      - "public/**"
-      - "package.json"
-      - "package-lock.json"
-      - "next.config.*"
-      - "sanity.config.*"
-      - ".github/workflows/security-dast.yml"
-      - ".github/zap-public.conf"
-      - ".github/scripts/check-zap-report.py"
   schedule:
     - cron: "43 4 * * 1"
   workflow_dispatch:
