@@ -2,9 +2,9 @@ import { SiteConfig } from "@/types";
 
 export const siteConfig: SiteConfig = {
   name: "Picksy",
-  tagline: "Helping businesses pick the right software with confidence.",
+  tagline: "Discover what's worth buying.",
   description:
-    "Picksy researches business software. Reviews appear here after their sources and claims are verified.",
+    "Picksy researches and compares products so you can shop with confidence. Reviews appear after their sources and claims are verified.",
   url: process.env.NEXT_PUBLIC_APP_URL || "",
   categories: [
     {
@@ -56,18 +56,20 @@ export const siteConfig: SiteConfig = {
     },
   ],
   mainNav: [
-    { title: "Categories", href: "/#categories" },
-    { title: "Why Picksy", href: "/#why-trust" },
-    { title: "Newsletter", href: "/#newsletter" },
+    { title: "Products", href: "/#products" },
+    { title: "Deals", href: "/#deals" },
+    { title: "Reviews", href: "/#why-trust" },
+    { title: "About", href: "/#categories" },
   ],
   footerNav: [
     {
       title: "Navigation",
       items: [
         { title: "Home", href: "/" },
+        { title: "Products", href: "/#products" },
+        { title: "Deals", href: "/#deals" },
         { title: "Categories", href: "/#categories" },
         { title: "Why Trust Picksy", href: "/#why-trust" },
-        { title: "Newsletter", href: "/#newsletter" },
       ],
     },
     {
