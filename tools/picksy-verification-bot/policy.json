@@ -1,0 +1,266 @@
+{
+  "version": "1.0.0",
+  "project": "Picksy",
+  "repository": "appiah233/Picksy",
+  "specialConditions": {
+    "mvpReleaseApproved": false,
+    "gate3Status": "BLOCKED_BY_OWNER_BUSINESS_EVIDENCE",
+    "releaseTagAllowed": false,
+    "openCodeQlAlerts": 8,
+    "specialPullRequests": {
+      "7": {
+        "title": "strict-dependency-security-gate",
+        "purpose": "Strict security gate enforcement (fails on unapproved high/critical findings)",
+        "status": "TRACKED"
+      },
+      "8": {
+        "title": "dependency-remediation-investigation",
+        "purpose": "Dependency remediation investigation and controlled text normalization",
+        "status": "TRACKED"
+      }
+    }
+  },
+  "requiredChecks": [
+    "test-and-build",
+    "CodeQL JavaScript/TypeScript",
+    "Production dependency audit",
+    "public-baseline"
+  ],
+  "checkPolicies": {
+    "test-and-build": {
+      "mandatory": true,
+      "description": "Lint, Typecheck, 193 unit/integration tests, and production build isolation"
+    },
+    "CodeQL JavaScript/TypeScript": {
+      "mandatory": true,
+      "description": "CodeQL static application security analysis"
+    },
+    "Production dependency audit": {
+      "mandatory": true,
+      "description": "Fail-closed production dependency audit with approved time-bound exceptions"
+    },
+    "public-baseline": {
+      "mandatory": true,
+      "description": "ZAP public baseline DAST scan"
+    }
+  },
+  "protectedBranches": [
+    "main"
+  ],
+  "agents": {
+    "Codex": {
+      "name": "Codex",
+      "role": "Backend, Database, and Security Owner",
+      "allowedAreas": [
+        "src/app/api/**",
+        "src/lib/**",
+        "src/server/**",
+        "src/app/studio/**",
+        "prisma/**",
+        ".github/workflows/**",
+        ".github/scripts/**",
+        "tools/**",
+        "tests/**",
+        "docs/**",
+        "package.json",
+        "package-lock.json",
+        "next.config.ts",
+        "tsconfig.json",
+        "eslint.config.mjs"
+      ],
+      "prohibitedAreas": [
+        "src/app/(storefront)/**",
+        "src/components/ui/**",
+        "src/features/catalog/**"
+      ]
+    },
+    "Gemini": {
+      "name": "Gemini",
+      "role": "Lead Coordinator, Design, and Frontend Owner",
+      "allowedAreas": [
+        "src/app/(storefront)/**",
+        "src/app/page.tsx",
+        "src/app/layout.tsx",
+        "src/app/globals.css",
+        "src/app/categories/**",
+        "src/app/products/**",
+        "src/components/**",
+        "src/features/**",
+        "src/config/**",
+        "src/styles/**",
+        "public/**",
+        "docs/**",
+        "package.json",
+        "package-lock.json"
+      ],
+      "prohibitedAreas": [
+        "prisma/schema.prisma",
+        "src/lib/importer/pipeline.ts",
+        ".github/workflows/security-sast.yml"
+      ]
+    }
+  },
+  "tasks": [
+    {
+      "taskId": "TASK-CODEX-DEV-PERF",
+      "agent": "Codex",
+      "project": "Picksy",
+      "objective": "Decouple Studio SSR bundle and optimize dev server compilation",
+      "branch": "feat/github-verification-bot",
+      "expectedFiles": [
+        "next.config.ts",
+        "package.json",
+        "src/app/studio/[[...tool]]/**",
+        "tests/production-wiring.test.mjs",
+        "docs/product-importer/COORDINATION-LOG.md"
+      ],
+      "prohibitedAreas": [
+        "src/features/catalog/**",
+        "src/components/ui/**"
+      ],
+      "acceptanceCriteria": [
+        "Studio SSR bundle drops from 1.7MB to <5kB",
+        "All 193 tests pass",
+        "Build isolation passes"
+      ],
+      "createdAt": "2026-10-16T13:45:00Z",
+      "status": "COMPLETED"
+    },
+    {
+      "taskId": "TASK-CODEX-SECURITY-SAST",
+      "agent": "Codex",
+      "project": "Picksy",
+      "objective": "Enforce fail-closed SAST dependency audit with 30-day time-bound exceptions",
+      "branch": "chore/security-pipelines",
+      "pullRequest": 2,
+      "expectedFiles": [
+        ".github/workflows/security-sast.yml",
+        ".github/scripts/check-dependency-audit.py",
+        "docs/security-pipelines.md",
+        "docs/security-dependency-triage.md"
+      ],
+      "prohibitedAreas": [
+        "src/features/catalog/**"
+      ],
+      "acceptanceCriteria": [
+        "SAST pipeline passes with 7/7 checks",
+        "Dependencies fail closed on unapproved CVEs"
+      ],
+      "createdAt": "2026-10-16T10:00:00Z",
+      "status": "COMPLETED"
+    },
+    {
+      "taskId": "TASK-CODEX-SECURITY-GATE",
+      "agent": "Codex",
+      "project": "Picksy",
+      "objective": "Enforce zero high dependency findings for MVP release",
+      "branch": "fix/strict-release-dependency-gate",
+      "pullRequest": 7,
+      "expectedFiles": [
+        ".github/workflows/security-sast.yml",
+        "docs/security-dependency-triage.md"
+      ],
+      "prohibitedAreas": [
+        "src/features/catalog/**"
+      ],
+      "acceptanceCriteria": [
+        "Fail-closed audit on high dependency findings without exceptions"
+      ],
+      "createdAt": "2026-10-16T13:20:00Z",
+      "status": "IN_PROGRESS"
+    },
+    {
+      "taskId": "TASK-CODEX-RELEASE-REMEDIATION",
+      "agent": "Codex",
+      "project": "Picksy",
+      "objective": "Remediate importer text normalization and document dependency reachability",
+      "branch": "fix/controlled-release-remediation",
+      "pullRequest": 8,
+      "expectedFiles": [
+        "src/lib/importer/pipeline.ts",
+        "docs/security-dependency-triage.md",
+        "docs/release-blocker-audit.md"
+      ],
+      "prohibitedAreas": [
+        "src/features/catalog/**"
+      ],
+      "acceptanceCriteria": [
+        "Pass all CI and security workflows",
+        "Document dependency reachability"
+      ],
+      "createdAt": "2026-10-16T13:40:00Z",
+      "status": "IN_PROGRESS"
+    },
+    {
+      "taskId": "TASK-GEMINI-HOME-DISCOVERY",
+      "agent": "Gemini",
+      "project": "Picksy",
+      "objective": "Add dark discovery design and generated product cards",
+      "branch": "feat/homepage-discovery-design",
+      "pullRequest": 5,
+      "expectedFiles": [
+        "public/picksy-hero.webp",
+        "src/app/globals.css",
+        "src/app/layout.tsx",
+        "src/config/site.ts",
+        "src/features/catalog/**",
+        "tests/rendered-journey.test.mjs"
+      ],
+      "prohibitedAreas": [
+        "prisma/**",
+        "src/lib/importer/**"
+      ],
+      "acceptanceCriteria": [
+        "Discovery cards render with accessible contrast",
+        "Catalogue isolation preserved"
+      ],
+      "createdAt": "2026-10-15T16:00:00Z",
+      "status": "COMPLETED"
+    },
+    {
+      "taskId": "TASK-CODEX-DEVELOP-SYNC",
+      "agent": "Codex",
+      "project": "Picksy",
+      "objective": "Develop branch synchronization to main",
+      "branch": "develop",
+      "pullRequest": 6,
+      "expectedFiles": [
+        ".github/workflows/security-sast.yml",
+        "docs/**",
+        "prisma/schema.prisma"
+      ],
+      "prohibitedAreas": [
+        "src/app/(storefront)/**"
+      ],
+      "acceptanceCriteria": [
+        "Resolve merge conflicts cleanly",
+        "All checks pass green"
+      ],
+      "createdAt": "2026-10-16T12:45:00Z",
+      "status": "COMPLETED"
+    },
+    {
+      "taskId": "TASK-CODEX-VERIFICATION-BOT",
+      "agent": "Codex",
+      "project": "Picksy",
+      "objective": "Build standalone Picksy GitHub Verification Bot",
+      "branch": "feat/github-verification-bot",
+      "expectedFiles": [
+        "tools/picksy-verification-bot/**",
+        "tests/verification-bot.test.mjs",
+        "docs/verification-bot-report.md"
+      ],
+      "prohibitedAreas": [
+        "src/app/(storefront)/**",
+        "src/lib/catalog.ts"
+      ],
+      "acceptanceCriteria": [
+        "All 23 verification bot tests pass",
+        "Real GitHub repository state evaluated",
+        "No duplicate pipeline runs"
+      ],
+      "createdAt": "2026-10-16T14:45:00Z",
+      "status": "IN_PROGRESS"
+    }
+  ]
+}
