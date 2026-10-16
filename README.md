@@ -25,7 +25,7 @@ For a published category, the catalog record is authoritative for its displayed 
 
 Editorial dates use `YYYY-MM-DD` in UTC. Validation requires evaluation date ≤ publication date ≤ last-reviewed date ≤ the current UTC date when the catalog is built. Editors should use the actual UTC dates of their work; a future date blocks publication.
 
-Local validation uses Node.js 22. `npm test` runs lint, type checking, and unit tests. `npm run test:build` runs the production build and build-isolation checks. GitLab pipeline and deployed behavior require separate evidence.
+Local validation uses Node.js 22. `npm test` runs lint, type checking, and unit tests. `npm run test:build` runs the production build and build-isolation checks. GitHub Actions and deployed behavior require separate evidence.
 
 > **Helping businesses pick the right software with confidence.**
 
@@ -92,23 +92,18 @@ The platform is engineered using modern, type-safe web technologies:
 | **Styling**           | Tailwind CSS 4                | Utility-first responsive styling                                    |
 | **Content platform**  | Sanity                        | Approved editorial and catalogue control plane                      |
 | **Hosting**            | Vercel                        | Application hosting and preview deployments                         |
-| **CI / CD**            | GitLab CI                     | Repository test, build, and quality jobs                            |
+| **CI / CD**            | GitHub Actions                | Repository tests and production build checks                        |
 | **Monitoring checks** | Checkly + Playwright          | External API and browser checks; deployment needs project config     |
 
 Sanity is Picksy's only currently approved third-party business platform. Newsletter delivery is required, but its provider and delivery architecture have not been approved. Affiliate retrieval remains disabled until source permissions and credentials are documented. Imported content must remain a draft until a human publishes it; the public catalogue adapter validates published records before rendering.
 
 ---
 
-## Auto DevOps Strategy
+## CI and deployment
 
-> **GitLab Auto DevOps manages build and deployment processes.**
+`.github/workflows/ci.yml` runs `npm ci`, `npm test`, and `npm run test:build` on Node.js 22 for pushes and pull requests to `main` and `develop`. Vercel hosts deployments; its GitHub connection and environment settings must be verified separately. The [migration record](docs/github-migration.md) tracks the remaining cutover checks.
 
-Picksy strictly complies with GitLab Auto DevOps standards:
-
-- **Test Override:** `.gitlab-ci.yml` includes the standard Auto DevOps template and runs `npm ci`, `npm test`, and `npm run build` on Node.js 22.
-- **Standard Lifecycle Scripts:** `package.json` provides standard, predictable scripts (`build`, `start`, `lint`, `typecheck`).
-- **Cloud Native Buildpack Compatibility:** The repository adheres to standard Node.js project structures, enabling Auto DevOps to detect, build, test, and package the application automatically.
-- **Zero Secret Exposure:** All runtime environment configurations are injected at the platform level; no sensitive secrets or production credentials reside within the codebase.
+`.gitlab-ci.yml` remains as a temporary rollback reference. GitLab OAuth for admin sign-in also remains active; changing the Git host does not change the app's identity provider.
 
 ---
 
@@ -144,7 +139,7 @@ chore(config): configure strict TypeScript and ESLint standards
 
 ```bash
 # 1. Clone the repository
-git clone https://gitlab.com/appiah233/picksy.git
+  git clone https://github.com/appiah233/Picksy.git
 cd picksy
 
 # 2. Checkout the integration branch

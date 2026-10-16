@@ -2137,3 +2137,15 @@ Production Studio route bundled; public build isolation passed. Unrelated dirty 
 
 #### 11. Handover State & Next Action
 Gemini can cross-review the extracted visual components. Re-run the external Code Quality scan against this commit. Continue the separately tracked Sanity editor identity and persistence work before claiming live importer integration.
+### Git hosting and CI migration (2026-10-16)
+
+- **Agent:** ArchitectAgent, ProductAgent, DatabaseAgent, SecurityAgent (independent discovery); ImplementationAgent (Codex). TestingAgent review pending.
+- **Timestamp:** 2026-10-16 (Africa/Accra).
+- **Branch:** `chore/github-migration`, isolated worktree from `origin/develop` at `4b5419d`.
+- **Task:** Move canonical Git hosting and the explicit GitLab test/build contract to GitHub without changing product behavior.
+- **Files modified:** `.github/workflows/ci.yml`, `README.md`, `docs/github-migration.md`, this log. No application, schema, auth, Sanity, or importer files modified.
+- **Commands executed:** `git status`, `git remote -v`, `git branch -a`, `git tag`, `git log --oneline --all --decorate --graph -n 50`, `git fetch origin main develop --tags`, `git ls-remote` for GitLab/GitHub, `gh repo view`, `gh api`, and repository configuration/search reads.
+- **Tests executed:** Pending isolated worktree validation and GitHub Actions execution.
+- **Result:** Discovery found GitLab `main`/`develop` and no remote tags, a GitHub repository with one independent initial commit, a dirty shared worktree, and explicit CI commands `npm ci`, `npm test`, `npm run test:build`. Vercel connection and inherited Auto DevOps behavior require external verification.
+- **Blockers:** GitHub workflow run, Vercel provider reconnection, and required branch protection have not yet been verified. Existing importer/Sanity live integration gates remain separate.
+- **Next action:** Validate in the isolated worktree, preserve both histories during transfer, push selected refs, then have TestingAgent independently verify GitHub and CI.
