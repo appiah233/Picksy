@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
 import { test } from "node:test";
 import { AuditLog, redactSecrets } from "../tools/picksy-verification-bot/audit-log.mjs";
-import { formatAsciiReport, buildMobileStatusSnapshot } from "../tools/picksy-verification-bot/formatter.mjs";
+import { formatAsciiReport, buildMobileStatusSnapshot, formatPrCommentMarkdown } from "../tools/picksy-verification-bot/formatter.mjs";
 import { GitHubClient } from "../tools/picksy-verification-bot/github-client.mjs";
 import { createVerificationBotServer } from "../tools/picksy-verification-bot/server.mjs";
 import {
@@ -731,4 +731,236 @@ test("VerificationEngine: Unregistered branch/PR resolves to UNKNOWN agent", () 
   assert.equal(resolved.task, null);
   assert.equal(resolved.isRegistered, false);
 });
+
+test("formatPrCommentMarkdown: formats sticky PR comment with badges, check table, and collapsible report", () => {
+  const mockVerification = {
+    state: VERIFICATION_STATES.VERIFIED,
+    agentName: "Codex",
+    branch: "fix/controlled-release-remediation",
+    headSha: "749aff6168a875384c1f1279dacb9cd603e7ed7b",
+    requiresHumanReview: false,
+    scope: { overallScope: SCOPE_CLASSIFICATIONS.IN_SCOPE, summary: "7/7 files in scope" },
+    checks: {
+      checks: [
+        { name: "test-and-build", status: "completed", conclusion: "success", detail: "4/4 tests passed" },
+        { name: "CodeQL JavaScript/TypeScript", status: "completed", conclusion: "success", detail: "0 alerts" },
+      ],
+    },
+    securityFindings: [],
+    conflicts: [],
+  };
+
+  const comment = formatPrCommentMarkdown({
+    verification: mockVerification,
+    policy,
+    reportText: "SAMPLE ASCII REPORT",
+  });
+
+  assert.ok(comment.startsWith("<!-- picksy-verification-bot -->"));
+  assert.ok(comment.includes("### 🤖 Picksy GitHub Verification Bot Report"));
+  assert.ok(comment.includes("🟢 **`VERIFIED`**"));
+  assert.ok(comment.includes("Codex"));
+  assert.ok(comment.includes("fix/controlled-release-remediation"));
+  assert.ok(comment.includes("749aff6"));
+  assert.ok(comment.includes("IN_SCOPE"));
+  assert.ok(comment.includes("✅ **NO**"));
+  assert.ok(comment.includes("test-and-build"));
+  assert.ok(comment.includes("SAMPLE ASCII REPORT"));
+  assert.ok(comment.includes("</details>"));
+});
+
+test("GitHubClient: postOrUpdatePrComment creates new comment or updates existing comment with marker", async () => {
+  let createdBody = null;
+  let updatedBody = null;
+  let updatedId = null;
+  let commentsInDb = [];
+
+  const mockFetch = async (url, options = {}) => {
+    const urlStr = String(url);
+    const method = options.method || "GET";
+
+    // 1. GET comments for issue 42
+    if (urlStr.includes("/issues/42/comments") && method === "GET") {
+      return {
+        ok: true,
+        status: 200,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => commentsInDb,
+      };
+    }
+
+    // 2. POST create comment
+    if (urlStr.includes("/issues/42/comments") && method === "POST") {
+      const parsed = JSON.parse(options.body);
+      createdBody = parsed.body;
+      const newComment = { id: 501, body: parsed.body };
+      commentsInDb.push(newComment);
+      return {
+        ok: true,
+        status: 201,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => newComment,
+      };
+    }
+
+    // 3. PATCH update comment 501
+    if (urlStr.includes("/issues/comments/501") && method === "PATCH") {
+      const parsed = JSON.parse(options.body);
+      updatedBody = parsed.body;
+      updatedId = 501;
+      return {
+        ok: true,
+        status: 200,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => ({ id: 501, body: parsed.body }),
+      };
+    }
+
+    return { ok: false, status: 404, headers: new Headers(), json: async () => ({}) };
+  };
+
+  const client = new GitHubClient({
+    token: "fake-token",
+    fetchImpl: mockFetch,
+  });
+
+  // First post: no comment exists -> creates new comment
+  const res1 = await client.postOrUpdatePrComment(42, "<!-- picksy-verification-bot -->\nFirst run verdict");
+  assert.equal(res1.ok, true);
+  assert.ok(createdBody.includes("First run verdict"));
+  assert.equal(updatedBody, null);
+
+  // Second post: comment with marker exists -> updates existing comment
+  const res2 = await client.postOrUpdatePrComment(42, "<!-- picksy-verification-bot -->\nSecond run verdict updated");
+  assert.equal(res2.ok, true);
+  assert.equal(updatedId, 501);
+  assert.ok(updatedBody.includes("Second run verdict updated"));
+
+  // Third case: client handles error without crashing
+  const failingClient = new GitHubClient({
+    token: "bad-token",
+    fetchImpl: async () => ({
+      ok: false,
+      status: 403,
+      headers: new Headers(),
+      json: async () => ({ message: "Resource not accessible by integration" }),
+    }),
+  });
+  const failRes = await failingClient.postOrUpdatePrComment(42, "Test body");
+  assert.equal(failRes.ok, false);
+  assert.equal(failRes.status, 403);
+});
+
+test("Server: Webhook posts or updates sticky PR comment on pull_request and check_run events", async () => {
+  const postedComments = [];
+  const sha = "c".repeat(40);
+
+  const mockGithubClient = {
+    async getPullRequest(number) {
+      return {
+        ok: true,
+        data: {
+          number,
+          head: { sha, ref: "feat/homepage-discovery-design" },
+          changed_files: 1,
+          title: "PR Title",
+          body: "PR Body",
+        },
+      };
+    },
+    async getPullRequestFiles() {
+      return {
+        ok: true,
+        data: [{ filename: "public/picksy-hero.webp" }],
+      };
+    },
+    async getCommitCheckRuns() {
+      return {
+        ok: true,
+        data: {
+          check_runs: [
+            { name: "test-and-build", status: "completed", conclusion: "success" },
+            { name: "CodeQL JavaScript/TypeScript", status: "completed", conclusion: "success" },
+            { name: "Production dependency audit", status: "completed", conclusion: "success" },
+            { name: "public-baseline", status: "completed", conclusion: "success" },
+          ],
+        },
+      };
+    },
+    async postOrUpdatePrComment(prNumber, commentBody) {
+      postedComments.push({ prNumber, commentBody });
+      return { ok: true, status: 200 };
+    },
+  };
+
+  const bot = createVerificationBotServer({
+    port: 3105,
+    webhookSecret: WEBHOOK_SECRET,
+    ownerToken: "test-owner-token-secret",
+    githubClient: mockGithubClient,
+    policy: {
+      ...policy,
+      features: { prComments: true },
+    },
+  });
+
+  await bot.start();
+
+  try {
+    // 1. Send pull_request webhook
+    const prBody = JSON.stringify({
+      pull_request: {
+        number: 5,
+        head: { sha, ref: "feat/homepage-discovery-design" },
+      },
+    });
+    const prSig = createHmac("sha256", WEBHOOK_SECRET).update(Buffer.from(prBody)).digest("hex");
+
+    const prRes = await fetch("http://localhost:3105/webhooks/github", {
+      method: "POST",
+      headers: {
+        "x-hub-signature-256": `sha256=${prSig}`,
+        "x-github-delivery": "pr-comment-delivery-1",
+        "x-github-event": "pull_request",
+        "Content-Type": "application/json",
+      },
+      body: prBody,
+    });
+    assert.equal(prRes.status, 200);
+    assert.equal(postedComments.length, 1);
+    assert.equal(postedComments[0].prNumber, 5);
+    assert.ok(postedComments[0].commentBody.includes("<!-- picksy-verification-bot -->"));
+    assert.ok(postedComments[0].commentBody.includes("Gemini"));
+
+    // 2. Send check_run webhook
+    const crBody = JSON.stringify({
+      check_run: {
+        name: "test-and-build",
+        status: "completed",
+        conclusion: "success",
+        head_sha: sha,
+        pull_requests: [{ number: 5, head: { sha, ref: "feat/homepage-discovery-design" } }],
+      },
+    });
+    const crSig = createHmac("sha256", WEBHOOK_SECRET).update(Buffer.from(crBody)).digest("hex");
+
+    const crRes = await fetch("http://localhost:3105/webhooks/github", {
+      method: "POST",
+      headers: {
+        "x-hub-signature-256": `sha256=${crSig}`,
+        "x-github-delivery": "cr-comment-delivery-1",
+        "x-github-event": "check_run",
+        "Content-Type": "application/json",
+      },
+      body: crBody,
+    });
+    assert.equal(crRes.status, 200);
+    assert.equal(postedComments.length, 2);
+    assert.equal(postedComments[1].prNumber, 5);
+    assert.ok(postedComments[1].commentBody.includes("<!-- picksy-verification-bot -->"));
+  } finally {
+    await bot.stop();
+  }
+});
+
 

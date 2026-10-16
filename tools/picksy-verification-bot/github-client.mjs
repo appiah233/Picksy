@@ -60,7 +60,7 @@ export class GitHubClient {
     }
   }
 
-  async _get(path, queryParams = {}) {
+  async _request(method, path, body = null, queryParams = {}) {
     const url = new URL(`${this.baseUrl}${path}`);
     for (const [k, v] of Object.entries(queryParams)) {
       if (v !== undefined && v !== null) {
@@ -78,13 +78,18 @@ export class GitHubClient {
       headers.Authorization = `Bearer ${this.token}`;
     }
 
+    if (body !== null) {
+      headers["Content-Type"] = "application/json";
+    }
+
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
 
     try {
       const response = await this.fetchImpl(url.toString(), {
-        method: "GET", // Strictly GET only
+        method,
         headers,
+        body: body !== null ? JSON.stringify(body) : undefined,
         redirect: "error", // Refuse redirects to prevent SSRF hopping
         signal: controller.signal,
       });
@@ -131,6 +136,10 @@ export class GitHubClient {
     }
   }
 
+  async _get(path, queryParams = {}) {
+    return this._request("GET", path, null, queryParams);
+  }
+
   async getPullRequest(pullNumber) {
     if (!validPullNumber(pullNumber)) return { ok: false, status: 400, error: "Invalid pull request number" };
     return this._get(`/repos/${this.owner}/${this.repo}/pulls/${pullNumber}`);
@@ -169,5 +178,55 @@ export class GitHubClient {
   async getCodeScanningAlerts(state = "open") {
     const query = state ? `?state=${encodeURIComponent(state)}` : "";
     return this._get(`/repos/${this.owner}/${this.repo}/code-scanning/alerts${query}`);
+  }
+
+  async getIssueComments(issueOrPrNumber) {
+    const num = Number(issueOrPrNumber);
+    if (!validPullNumber(num)) return { ok: false, status: 400, error: "Invalid issue or PR number" };
+    return this._request("GET", `/repos/${this.owner}/${this.repo}/issues/${num}/comments`);
+  }
+
+  async createIssueComment(issueOrPrNumber, body) {
+    const num = Number(issueOrPrNumber);
+    if (!validPullNumber(num)) return { ok: false, status: 400, error: "Invalid issue or PR number" };
+    if (!body || typeof body !== "string") return { ok: false, status: 400, error: "Comment body must be a non-empty string" };
+    return this._request("POST", `/repos/${this.owner}/${this.repo}/issues/${num}/comments`, { body });
+  }
+
+  async updateIssueComment(commentId, body) {
+    const numId = Number(commentId);
+    if (!Number.isSafeInteger(numId) || numId <= 0) return { ok: false, status: 400, error: "Invalid comment ID" };
+    if (!body || typeof body !== "string") return { ok: false, status: 400, error: "Comment body must be a non-empty string" };
+    return this._request("PATCH", `/repos/${this.owner}/${this.repo}/issues/comments/${numId}`, { body });
+  }
+
+  async postOrUpdatePrComment(issueOrPrNumber, commentBody, marker = "<!-- picksy-verification-bot -->") {
+    try {
+      const existingRes = await this.getIssueComments(issueOrPrNumber);
+      if (!existingRes.ok) {
+        console.warn(`[GitHubClient] Unable to fetch comments for PR #${issueOrPrNumber}: ${existingRes.error}`);
+        return { ok: false, error: existingRes.error, status: existingRes.status };
+      }
+
+      const comments = Array.isArray(existingRes.data) ? existingRes.data : [];
+      const botComment = comments.find((c) => c.body && c.body.includes(marker));
+
+      if (botComment && botComment.id) {
+        const updateRes = await this.updateIssueComment(botComment.id, commentBody);
+        if (!updateRes.ok) {
+          console.warn(`[GitHubClient] Failed to update comment ${botComment.id} on PR #${issueOrPrNumber}: ${updateRes.error}`);
+        }
+        return updateRes;
+      } else {
+        const createRes = await this.createIssueComment(issueOrPrNumber, commentBody);
+        if (!createRes.ok) {
+          console.warn(`[GitHubClient] Failed to create comment on PR #${issueOrPrNumber}: ${createRes.error}`);
+        }
+        return createRes;
+      }
+    } catch (err) {
+      console.warn(`[GitHubClient] Error in postOrUpdatePrComment for PR #${issueOrPrNumber}:`, err.message);
+      return { ok: false, error: err.message, status: 500 };
+    }
   }
 }

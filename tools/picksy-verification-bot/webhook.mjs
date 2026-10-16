@@ -125,6 +125,11 @@ export function classifyWebhookEvent(eventType, payload) {
         status: payload.check_run?.status, // "queued", "in_progress", "completed"
         conclusion: payload.check_run?.conclusion, // "success", "failure", "neutral", "cancelled", "timed_out", "action_required"
         headSha: payload.check_run?.head_sha,
+        pullRequests: (payload.check_run?.pull_requests || []).map((pr) => ({
+          number: pr.number,
+          headSha: pr.head?.sha,
+          headRef: pr.head?.ref,
+        })),
         raw: payload,
       };
 
