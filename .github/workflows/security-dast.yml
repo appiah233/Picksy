@@ -1,0 +1,91 @@
+name: Picksy public DAST
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "public/**"
+      - "package.json"
+      - "package-lock.json"
+      - "next.config.*"
+      - "sanity.config.*"
+      - ".github/workflows/security-dast.yml"
+      - ".github/zap-public.conf"
+      - ".github/scripts/check-zap-report.py"
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - "src/**"
+      - "public/**"
+      - "package.json"
+      - "package-lock.json"
+      - "next.config.*"
+      - "sanity.config.*"
+      - ".github/workflows/security-dast.yml"
+      - ".github/zap-public.conf"
+      - ".github/scripts/check-zap-report.py"
+  schedule:
+    - cron: "43 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dast-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  public-baseline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Start isolated production build
+        run: |
+          npm run start -- --hostname 127.0.0.1 --port 3000 > /tmp/picksy-dast-server.log 2>&1 &
+          echo $! > /tmp/picksy-dast-server.pid
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent --show-error http://127.0.0.1:3000/ -o /tmp/picksy-dast-home.html; then
+              grep -q 'Picksy' /tmp/picksy-dast-home.html
+              exit 0
+            fi
+            sleep 2
+          done
+          cat /tmp/picksy-dast-server.log
+          exit 1
+      - name: Run passive ZAP baseline on public localhost
+        run: |
+          mkdir -p zap-report
+          chmod 777 zap-report
+          cp .github/zap-public.conf zap-report/zap-public.conf
+          set +e
+          docker run --rm --network host \
+            -v "${PWD}/zap-report:/zap/wrk/:rw" \
+            ghcr.io/zaproxy/zaproxy:stable \
+            zap-baseline.py -t http://127.0.0.1:3000/ -m 1 -T 10 \
+              -c /zap/wrk/zap-public.conf -I \
+              -r report.html -J report.json -w report.md
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ]; then
+            echo "ZAP baseline failed with exit code $status"
+            exit "$status"
+          fi
+          test -s zap-report/report.json
+          python3 .github/scripts/check-zap-report.py zap-report/report.json
+      - name: Upload ZAP reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-public-baseline
+          path: zap-report/report.*
+          if-no-files-found: warn
+          retention-days: 14

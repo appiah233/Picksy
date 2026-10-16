@@ -2149,3 +2149,15 @@ Gemini can cross-review the extracted visual components. Re-run the external Cod
 - **Result:** Discovery found GitLab `main`/`develop` and no remote tags, a GitHub repository with one independent initial commit, a dirty shared worktree, and explicit CI commands `npm ci`, `npm test`, `npm run test:build`. Vercel connection and inherited Auto DevOps behavior require external verification.
 - **Blockers:** GitHub workflow run, Vercel provider reconnection, and required branch protection have not yet been verified. Existing importer/Sanity live integration gates remain separate.
 - **Next action:** Validate in the isolated worktree, preserve both histories during transfer, push selected refs, then have TestingAgent independently verify GitHub and CI.
+### GitHub SAST and public DAST (2026-10-16)
+
+- **Agents:** ArchitectAgent, ProductAgent, DatabaseAgent, SecurityAgent (read-only design review); ImplementationAgent (Codex); TestingAgent pending independent validation.
+- **Timestamp:** 2026-10-16 (Africa/Accra).
+- **Branch:** `chore/security-pipelines`, isolated worktree from `origin/develop` at `c2f9375`.
+- **Task:** Add CodeQL, production dependency audit, and passive public ZAP baseline without changing application behavior.
+- **Files modified:** `.github/workflows/security-sast.yml`, `.github/workflows/security-dast.yml`, `.github/zap-public.conf`, `.github/scripts/check-zap-report.py`, `docs/security-pipelines.md`, this log.
+- **Commands executed:** `git status`, repository workflow/config reads, GitHub security API checks, `npm audit --omit=dev --json`, official CodeQL/ZAP documentation review.
+- **Tests executed:** Workflow syntax, GitHub execution, ZAP report, and existing CI pending.
+- **Result:** CodeQL eligible on public JS/TS repository; existing secret scanning/push protection enabled; dependency baseline has 13 high and 11 moderate production-tree findings. Local ephemeral build approved as public DAST target; deployed Vercel target remains unverified.
+- **Blockers:** Dependency findings need triage; authenticated/deployed DAST not yet implemented; GitHub branch protection not configured.
+- **Next action:** Push an isolated security branch, run workflows, and obtain independent TestingAgent evidence before claiming completion.
