@@ -111,7 +111,7 @@ Sanity is Picksy's only currently approved third-party business platform. Newsle
 
 We adhere to a disciplined GitFlow model:
 
-- **`main`**: Production-ready branch. Deployed automatically by Auto DevOps to production.
+- **`main`**: Production-ready branch. Vercel must use this branch for production after its GitHub connection is verified.
 - **`develop`**: Integration branch where completed feature branches land after review.
 - **`feature/*`**: Dedicated feature branches branched from and targeting `develop` (e.g., `feature/initial-foundation`).
 - **`fix/*`**: Bug fixes targeting `develop`.
