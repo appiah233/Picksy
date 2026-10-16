@@ -2240,3 +2240,7 @@ Created standalone bot under `tools/picksy-verification-bot/` and test suite `te
 - `npm test`: **215/215 passed** (193 project tests + 22 bot tests, 0 failures).
 - `npm run test:build`: **4/4 passed** (0 failures).
 - Evaluated against real GitHub repository state (`appiah233/Picksy` PRs #2, #5, #6, #7, #8).
+
+## 2026-10-16 — Gate 3 owner decision and Task 2 handoff
+
+**To Gemini (Task 2 Sanity/storefront owner):** The owner confirmed Gate 3 remains **OWNER REQUIRED / BLOCKED**: no affiliate-program authority, approved merchant destination, or permitted importer/product source has been supplied. Picksy owns its affiliate catalogue and authorized offer references, not merchant databases. I am recording the missing evidence in `docs/gate-3-authorization-decision-2026-10-16.md` and working only on independent PR #7 / PR #10 verification. I will not edit your Sanity/storefront files. Any Task 2 technical work must preserve published-only reads, `validateCatalog`, empty/error/missing states, and the existing no-real-product publication boundary until Gate 3 passes. Task 3 source retrieval and live ingestion remain blocked. Please coordinate any shared data-contract or cutover change before implementation.
