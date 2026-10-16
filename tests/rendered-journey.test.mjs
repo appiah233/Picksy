@@ -76,6 +76,12 @@ test("home → category → product journey renders by following the rendered li
   const catalog = createCatalogAccess(syntheticCatalog());
 
   const home = page(renderHomePage(catalog));
+  const featuredProductLinks = links(home).filter((link) => link.href.startsWith("/products/"));
+  assert.deepEqual(
+    featuredProductLinks.map((link) => link.href),
+    [`/products/${OFFER_PRODUCT_SLUG}`, `/products/${PLAIN_PRODUCT_SLUG}`]
+  );
+  assert.equal(home.match(/New discovery on its way/g).length, 2);
   const categoryLinks = links(home).filter((link) => link.href.startsWith("/categories/"));
   assert.equal(categoryLinks.length, 1);
   assert.equal(categoryLinks[0].href, `/categories/${CATEGORY_SLUG}`);

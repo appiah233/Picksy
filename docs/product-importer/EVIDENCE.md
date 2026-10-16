@@ -54,3 +54,32 @@ The proposed browser Studio shared/robot token authorization is **CHANGES REQUIR
    - Zero browser exposure of write tokens or credentials.
 
 
+
+## 2026-10-10 Milestone G-DEP-1 Sanity Dependency Compatibility Remediation & Runtime Studio Evidence
+
+1. **Failure Diagnosis**:
+   - `create-sanity` failed with `ERESOLVE` trying to install `next-sanity@13.3.4`, which requires `next@"^16.0.0-0"`, conflicting with `next@15.5.27`.
+   - `sanity@5.31.2` imports `useEffectEvent` directly from `'react'`, which is not exported by Next.js 15.5.27's compiled React bundle (`next/dist/compiled/react`), causing Webpack build failure.
+
+2. **Remediation Implemented (Option A)**:
+   - Kept `next@15.5.27` + `react@19.0.0` (resolved to `19.3.0`) + TypeScript baseline.
+   - Pinned `next-sanity` to official stable `11.6.13` (declared peers: `next@"^15.1.0-0 || ^16.0.0-0"`, `react@"^18.3 || ^19"`, `sanity@"^4.22.0 || ^5"`).
+   - Pinned `sanity` and `@sanity/vision` to `^4.22.1` (uses `use-effect-event` ponyfill, officially supports React 19, zero Webpack import errors).
+   - Retained `@sanity/image-url@^2.1.1` and `styled-components@^6.5.3`.
+   - Installed normally with zero bypass flags (no `--force`, no `--legacy-peer-deps`).
+
+3. **Verification Evidence**:
+   - `npm ls next react react-dom next-sanity sanity @sanity/vision @sanity/image-url styled-components`: 0 invalid peer dependencies, exit code 0.
+   - `npm run typecheck`: 0 errors, exit code 0.
+   - `npm run lint`: 0 errors, 0 warnings, exit code 0.
+   - `npm test`: 141/141 tests PASS cleanly, exit code 0.
+   - `npm run build`: Production build succeeded in 80s, `/studio/[[...tool]]` generated as static route (1.75 MB), exit code 0.
+   - `node tests/build-isolation.mjs`: 4/4 tests PASS, exit code 0.
+   - **Runtime HTTP Server Evidence (`next start -p 3000`)**:
+     - `GET http://localhost:3000/`: HTTP 200, 45,185 bytes, rendered public Picksy application.
+     - `GET http://localhost:3000/studio`: HTTP 200, 22,510 bytes, rendered embedded Sanity Studio (`<div id="sanity" data-ui="NextStudioLayout">`).
+
+4. **Security & Invariant Verification**:
+   - `.env.local` contains only public identifiers: `NEXT_PUBLIC_SANITY_PROJECT_ID="0tozsrrx"` and `NEXT_PUBLIC_SANITY_DATASET="production"`.
+   - Zero Sanity write tokens or affiliate credentials in client code or `.env.local`.
+   - Public catalogue `src/content/catalog.ts` remains empty.

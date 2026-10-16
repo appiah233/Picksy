@@ -22,3 +22,644 @@ body {
 * {
   border-color: var(--border);
 }
+
+.picksy-home {
+  background: #0b0b11;
+  color: #f8f8fb;
+  overflow: hidden;
+}
+
+.picksy-container {
+  width: min(100% - 72px, 1160px);
+  margin-inline: auto;
+}
+
+.picksy-site-header {
+  position: relative;
+  z-index: 40;
+  background: #101017;
+  border-bottom: 1px solid #292936;
+  color: #f9f9fc;
+}
+
+.picksy-header-inner {
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  gap: 34px;
+}
+
+.picksy-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex: none;
+  font-size: 32px;
+  font-weight: 750;
+  letter-spacing: -0.065em;
+  line-height: 1;
+}
+
+.picksy-logo svg {
+  transform: rotate(-12deg);
+}
+.picksy-logo:focus-visible,
+.picksy-main-nav a:focus-visible,
+.picksy-header-actions a:focus-visible,
+.picksy-home a:focus-visible {
+  outline: 2px solid #a5a8ff;
+  outline-offset: 4px;
+}
+
+.picksy-main-nav {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  gap: 28px;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.picksy-nav-link {
+  color: #e4e4ea;
+  transition: color 0.2s;
+}
+.picksy-nav-link:hover {
+  color: #8087ff;
+}
+.picksy-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+.picksy-header-actions > a:first-child {
+  color: #a5a6b8;
+}
+.picksy-header-deal,
+.picksy-button-primary,
+.picksy-search button,
+.picksy-card-button {
+  background: #5d63e9;
+  color: white;
+  font-weight: 700;
+  transition:
+    background 0.2s,
+    transform 0.2s;
+}
+.picksy-header-deal:hover,
+.picksy-button-primary:hover,
+.picksy-card-button:not(.picksy-card-button-disabled):hover {
+  background: #7479f3;
+  transform: translateY(-1px);
+}
+.picksy-header-deal {
+  border-radius: 10px;
+  padding: 10px 15px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.picksy-hero {
+  min-height: 630px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #292938;
+  isolation: isolate;
+}
+.picksy-hero-image {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image:
+    linear-gradient(
+      90deg,
+      rgba(9, 9, 16, 0.98) 0%,
+      rgba(10, 10, 17, 0.89) 26%,
+      rgba(10, 10, 17, 0.5) 56%,
+      rgba(10, 10, 17, 0.2) 100%
+    ),
+    linear-gradient(0deg, rgba(8, 8, 15, 0.7), transparent 42%), url("/picksy-hero.webp");
+  background-size: cover;
+  background-position: center 45%;
+}
+.picksy-hero-content {
+  padding-block: 70px 75px;
+}
+.picksy-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid #42418f;
+  background: rgba(83, 80, 179, 0.22);
+  color: #8f94ff;
+  font-weight: 700;
+  font-size: 12px;
+  border-radius: 30px;
+  padding: 6px 13px;
+}
+.picksy-hero h1,
+.picksy-section h2,
+.picksy-deals-panel h2 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 650;
+  letter-spacing: -0.04em;
+}
+.picksy-hero h1 {
+  max-width: 700px;
+  margin-top: 28px;
+  font-size: clamp(50px, 6.2vw, 82px);
+  line-height: 1.04;
+}
+.picksy-hero-copy {
+  max-width: 580px;
+  margin-top: 26px;
+  font-size: clamp(16px, 1.7vw, 19px);
+  line-height: 1.58;
+  color: #a2a3b5;
+}
+.picksy-search {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: min(100%, 525px);
+  margin-top: 34px;
+  padding: 7px 8px 7px 17px;
+  border: 1px solid #303044;
+  border-radius: 12px;
+  background: rgba(15, 15, 25, 0.94);
+  color: #9295af;
+}
+.picksy-search input {
+  min-width: 0;
+  flex: 1;
+  background: transparent;
+  color: #b2b4c7;
+  font-size: 14px;
+  outline: none;
+}
+.picksy-search input::placeholder {
+  color: #9294a9;
+  opacity: 1;
+}
+.picksy-search button {
+  border-radius: 8px;
+  padding: 9px 17px;
+  font-size: 12px;
+  opacity: 0.72;
+  cursor: not-allowed;
+}
+.picksy-hero-actions {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 28px;
+}
+.picksy-button {
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 0 25px;
+  border-radius: 10px;
+  font-size: 14px;
+}
+.picksy-button-quiet {
+  background: rgba(15, 15, 24, 0.86);
+  color: #e8e8ee;
+  border: 1px solid #343446;
+}
+.picksy-button-quiet svg {
+  color: #7378f5;
+}
+.picksy-button-quiet:hover {
+  border-color: #6569e4;
+}
+
+.picksy-trust-strip {
+  background: #101017;
+  border-bottom: 1px solid #20202c;
+}
+.picksy-trust-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  padding-block: 23px;
+  text-align: center;
+}
+.picksy-trust-grid div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.picksy-trust-grid strong {
+  font-family: Georgia, "Times New Roman", serif;
+  color: #f4f4f7;
+  font-size: 19px;
+}
+.picksy-trust-grid span {
+  font-size: 12px;
+  color: #8b8da3;
+}
+
+.picksy-section {
+  padding-block: 76px;
+}
+.picksy-products-section {
+  background: #0b0b11;
+}
+.picksy-section-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 20px;
+}
+.picksy-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #7278ff;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 12px;
+  font-weight: 800;
+}
+.picksy-section h2,
+.picksy-deals-panel h2 {
+  margin-top: 9px;
+  font-size: clamp(31px, 3.1vw, 43px);
+  line-height: 1.16;
+}
+.picksy-text-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #858aff;
+  font-size: 14px;
+  white-space: nowrap;
+}
+.picksy-text-link:hover {
+  color: #abb0ff;
+}
+.picksy-section-intro {
+  margin-top: 9px;
+  color: #9294a8;
+  font-size: 14px;
+}
+.picksy-product-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 32px;
+}
+.picksy-product-card {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid #2e2e3e;
+  border-radius: 16px;
+  background: #14141e;
+}
+.picksy-product-art {
+  position: relative;
+  height: 190px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.picksy-product-art-0 {
+  background: radial-gradient(circle at 73% 30%, #ed6e8b 0, #973153 34%, #231a32 72%);
+}
+.picksy-product-art-1 {
+  background: radial-gradient(circle at 35% 28%, #d7d3f1 0, #8788b3 31%, #20273f 75%);
+}
+.picksy-product-art-2 {
+  background: radial-gradient(circle at 60% 35%, #48b890 0, #186250 35%, #152c34 76%);
+}
+.picksy-product-art-3 {
+  background: radial-gradient(circle at 32% 35%, #c6cbd0 0, #666c79 30%, #191c27 76%);
+}
+.picksy-product-art::after {
+  content: "";
+  position: absolute;
+  width: 180px;
+  height: 180px;
+  border: 27px solid rgba(255, 255, 255, 0.12);
+  border-radius: 50%;
+  transform: rotate(-25deg) scaleX(0.75);
+}
+.picksy-card-tag {
+  position: absolute;
+  z-index: 2;
+  left: 13px;
+  top: 13px;
+  background: #656bef;
+  color: white;
+  border-radius: 20px;
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: 750;
+}
+.picksy-product-art-icon {
+  width: 85px;
+  height: 85px;
+  color: rgba(255, 255, 255, 0.68);
+  z-index: 1;
+}
+.picksy-preview-number {
+  position: absolute;
+  right: 15px;
+  bottom: 10px;
+  color: rgba(255, 255, 255, 0.3);
+  font:
+    700 36px Georgia,
+    serif;
+}
+.picksy-product-body {
+  padding: 15px 15px 16px;
+}
+.picksy-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  color: #9ba0da;
+  font-size: 11px;
+}
+.picksy-merchant {
+  border: 1px solid #34344a;
+  border-radius: 20px;
+  padding: 3px 7px;
+  color: #a4a6bc;
+}
+.picksy-product-body h3 {
+  min-height: 38px;
+  margin-top: 10px;
+  font:
+    650 16px/1.25 Georgia,
+    "Times New Roman",
+    serif;
+}
+.picksy-product-summary {
+  min-height: 52px;
+  margin-top: 6px;
+  color: #9899ad;
+  font-size: 12px;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.picksy-product-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 7px;
+  margin-top: 14px;
+  color: #d0d0dd;
+  font-size: 11px;
+}
+.picksy-card-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+  border-radius: 7px;
+  padding: 7px 9px;
+  font-size: 11px;
+}
+.picksy-card-button-disabled {
+  background: #42455a;
+  color: #d5d5e0;
+}
+
+.picksy-deals-section {
+  padding: 48px 0 70px;
+  background: #191921;
+}
+.picksy-deals-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+  padding: 48px;
+  border: 1px solid #343459;
+  border-radius: 18px;
+  background: #11111b;
+}
+.picksy-deals-panel h2 {
+  max-width: 580px;
+}
+.picksy-deals-panel p {
+  margin-top: 12px;
+  max-width: 600px;
+  color: #a0a1b4;
+  line-height: 1.6;
+}
+.picksy-deals-panel .picksy-button {
+  flex: none;
+}
+.picksy-categories-section {
+  background: #111119;
+}
+.picksy-category-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 30px;
+}
+.picksy-category-card {
+  display: flex;
+  min-height: 210px;
+  flex-direction: column;
+  padding: 24px;
+  border: 1px solid #30303f;
+  border-radius: 15px;
+  background: #191922;
+}
+.picksy-category-card:hover:is(a) {
+  border-color: #666be8;
+}
+.picksy-category-icon {
+  display: inline-flex;
+  width: 42px;
+  height: 42px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: #292947;
+  color: #9195ff;
+}
+.picksy-category-card h3 {
+  margin-top: 15px;
+  color: #f1f1f6;
+  font-size: 17px;
+  font-weight: 700;
+}
+.picksy-category-card p {
+  margin-top: 6px;
+  color: #a0a1b2;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.picksy-category-status {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: auto;
+  padding-top: 17px;
+  color: #9196ff;
+  font-size: 12px;
+  font-weight: 650;
+}
+.picksy-method-section {
+  background: #0b0b11;
+}
+.picksy-method-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 80px;
+}
+.picksy-method-grid > div:first-child p {
+  max-width: 500px;
+  margin-top: 20px;
+  color: #a0a1b4;
+  line-height: 1.65;
+}
+.picksy-method-points {
+  display: grid;
+  gap: 22px;
+}
+.picksy-method-points > div {
+  display: flex;
+  gap: 16px;
+  align-items: start;
+}
+.picksy-method-points svg {
+  flex: none;
+  width: 22px;
+  color: #8489ff;
+}
+.picksy-method-points span {
+  display: grid;
+  gap: 5px;
+}
+.picksy-method-points strong {
+  font-size: 15px;
+}
+.picksy-method-points small {
+  color: #a0a1b4;
+  font-size: 13px;
+}
+.picksy-site-footer {
+  background: #111119;
+  color: #a0a1b4;
+  border-top: 1px solid #2c2c38;
+}
+.picksy-site-footer .text-zinc-950,
+.picksy-site-footer .text-zinc-900 {
+  color: #f3f3f8;
+}
+.picksy-site-footer .text-zinc-600,
+.picksy-site-footer .text-zinc-500 {
+  color: #9b9bae;
+}
+.picksy-site-footer .bg-zinc-50 {
+  background: #191922;
+}
+.picksy-site-footer .border-zinc-200,
+.picksy-site-footer .border-zinc-100 {
+  border-color: #343441;
+}
+
+@media (max-width: 900px) {
+  .picksy-container {
+    width: min(100% - 40px, 1160px);
+  }
+  .picksy-product-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .picksy-category-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .picksy-method-grid {
+    gap: 35px;
+  }
+  .picksy-header-inner {
+    gap: 20px;
+  }
+  .picksy-main-nav {
+    gap: 16px;
+  }
+}
+@media (max-width: 640px) {
+  .picksy-container {
+    width: min(100% - 32px, 1160px);
+  }
+  .picksy-header-inner {
+    min-height: 64px;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding-block: 12px;
+  }
+  .picksy-logo {
+    font-size: 27px;
+  }
+  .picksy-logo svg {
+    width: 27px;
+  }
+  .picksy-main-nav {
+    order: 3;
+    flex: 0 0 100%;
+    width: 100%;
+    overflow-x: auto;
+    gap: 20px;
+    padding-bottom: 2px;
+  }
+  .picksy-header-actions {
+    margin-left: auto;
+    gap: 10px;
+  }
+  .picksy-header-deal {
+    padding: 8px 10px;
+    font-size: 11px;
+  }
+  .picksy-hero {
+    min-height: 600px;
+    align-items: end;
+  }
+  .picksy-hero-image {
+    background-position: 60% center;
+    background-image:
+      linear-gradient(90deg, rgba(9, 9, 16, 0.94), rgba(10, 10, 17, 0.68)),
+      linear-gradient(0deg, rgba(8, 8, 15, 0.78), transparent 65%), url("/picksy-hero.webp");
+  }
+  .picksy-hero-content {
+    padding-block: 65px;
+  }
+  .picksy-hero h1 {
+    font-size: clamp(43px, 11vw, 65px);
+  }
+  .picksy-trust-grid {
+    grid-template-columns: repeat(2, 1fr);
+    row-gap: 22px;
+  }
+  .picksy-section {
+    padding-block: 55px;
+  }
+  .picksy-product-grid,
+  .picksy-category-grid,
+  .picksy-method-grid {
+    grid-template-columns: 1fr;
+  }
+  .picksy-product-grid {
+    gap: 16px;
+  }
+  .picksy-deals-panel {
+    flex-direction: column;
+    align-items: start;
+    padding: 28px;
+  }
+}
