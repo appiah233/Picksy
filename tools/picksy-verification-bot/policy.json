@@ -277,7 +277,7 @@
       "agent": "Codex",
       "project": "Picksy",
       "objective": "Add policy-gated automatic PR merging after final checks and independent approval",
-      "branch": "feat/picksy-bot-automerge",
+      "branch": "feat/picksy-bot-automerge-main",
       "expectedFiles": [
         "tools/picksy-verification-bot/**",
         "tests/verification-bot.test.mjs"
