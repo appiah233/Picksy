@@ -54,6 +54,15 @@ No dependency remediation has yet passed compatibility checks. The unpatched bra
 
 SecurityAgent reviewed the individual classifications. PR #8 fixes the text-only boundary behind #1, #2, #3, #5, and #8, with tests-first regression, clean CI, branch CodeQL, DAST, and independent TestingAgent review above. No browser-executing sink was demonstrated, and the five alerts remain open on `main` pending integration. #4, #6, and #7 remain test-only findings with no production path demonstrated; their analyzer patterns are real. No alert was dismissed or suppressed.
 
-## Owner-supplied Gate 3 inputs
+## Owner-supplied Gate 3 inputs (Release-Blocker Register)
 
-Before public catalogue publication, the owner must provide an approved product/category selection; verifiable merchant and affiliate-program identity; the exact HTTPS destination and redirects; agreement showing Picksy may use that destination; a stable private authorization-evidence reference; sourced product facts and named editorial review with real dates and method; approved affiliate disclosure; recheck owner/date; and an approved production HTTPS origin. These records must be independently checked under [the evidence packet](production-affiliate-evidence-packet.md). None may be fabricated to clear this gate.
+| Field | Authoritative Record |
+| --- | --- |
+| **Blocker ID** | `RB-GATE3-AFFILIATE-AUTH` |
+| **Current Status** | **OWNER REQUIRED / BLOCKED** |
+| **Affected Merchants / Offers** | All production merchant records (`merchants`), affiliate destination records (`affiliateDestinations`), and active merchant offers (`offers`) in `src/content/catalog.ts` and any upstream Sanity/importer promotion candidates lacking verified merchant authorization. |
+| **Required Authorization Evidence** | Verifiable merchant and affiliate-program identity; active Picksy account; agreement/terms authorizing exact HTTPS destination, redirect chain, link parameters, and promotional use; stable private `authorizationReference`; sourced product facts and named editorial review with real evaluation/publication/review dates; approved affiliate disclosure wording; named recheck owner/date; and approved production HTTPS origin, independently verified under [the evidence packet](production-affiliate-evidence-packet.md). |
+| **Owner Decision Required** | Owner must supply the private authorization evidence packet for independent verification before activating any merchant offer, **or** explicitly decide whether to pursue a scoped editorial-only / selective-offer release where unauthorized offers remain excluded (`active: false` / omitted) while only independently verified editorial reviews or authorized offers are published. |
+| **Effect on Production Publication** | Production catalogue publication of unverified merchant affiliate offers remains strictly blocked (`src/content/catalog.ts` publishes zero unverified merchant offers). Storefront UI renders an empty/upcoming state or plain editorial review without a merchant CTA whenever an approved active offer is absent. |
+
+Before public catalogue publication, none of the required records above may be fabricated or assumed to clear this gate.
