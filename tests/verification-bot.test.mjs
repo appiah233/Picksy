@@ -92,6 +92,15 @@ test("Scenario 3: Agents modify the same file -> OWNERSHIP_CONFLICT, CONFLICT, o
   assert.deepEqual(conflicts[0].overlappingLines, [12, 19]);
 });
 
+test("A registered agent replacing UNKNOWN on the same PR does not conflict with itself", () => {
+  const engine = new VerificationEngine(policy);
+  engine.detectCrossAgentConflicts("UNKNOWN", ["tests/verification-bot.test.mjs"], "", "PR #14");
+  const conflicts = engine.detectCrossAgentConflicts("Codex", ["tests/verification-bot.test.mjs"], "", "PR #14");
+  assert.deepEqual(conflicts, []);
+  assert.equal(engine.activeAgentWork.has("UNKNOWN"), false);
+  assert.equal(engine.activeAgentWork.get("Codex").reference, "PR #14");
+});
+
 test("Scenario 4: Agent modifies an out-of-scope file -> OUT_OF_SCOPE, FAILED, requiresHumanReview: true", () => {
   const engine = new VerificationEngine(policy);
   // Codex touches prohibited storefront area
@@ -879,10 +888,10 @@ test("Server: Webhook posts or updates sticky PR comment on pull_request and che
         ok: true,
         data: {
           check_runs: [
-            { name: "test-and-build", status: "completed", conclusion: "success" },
-            { name: "CodeQL JavaScript/TypeScript", status: "completed", conclusion: "success" },
-            { name: "Production dependency audit", status: "completed", conclusion: "success" },
-            { name: "public-baseline", status: "completed", conclusion: "success" },
+            { name: "test-and-build", head_sha: sha, status: "completed", conclusion: "success" },
+            { name: "CodeQL JavaScript/TypeScript", head_sha: sha, status: "completed", conclusion: "success" },
+            { name: "Production dependency audit", head_sha: sha, status: "completed", conclusion: "success" },
+            { name: "public-baseline", head_sha: sha, status: "completed", conclusion: "success" },
           ],
         },
       };
@@ -963,4 +972,353 @@ test("Server: Webhook posts or updates sticky PR comment on pull_request and che
   }
 });
 
+test("GitHubClient: createPullRequestReview creates review and falls back to COMMENT on 422 self-review rejection", async () => {
+  let submittedPayload = null;
+  const mockFetch = async (_url, options = {}) => {
+    const body = options.body ? JSON.parse(options.body) : {};
+    submittedPayload = body;
 
+    // Simulate GitHub 422 error on APPROVE for own PR
+    if (body.event === "APPROVE") {
+      return {
+        ok: false,
+        status: 422,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => ({
+          message: "Unprocessable Entity",
+          errors: ["Review Can not approve your own pull request"],
+        }),
+      };
+    }
+
+    // Success on fallback to COMMENT
+    return {
+      ok: true,
+      status: 200,
+      headers: new Headers({ "content-type": "application/json" }),
+      json: async () => ({ id: 9999, state: "COMMENTED" }),
+    };
+  };
+
+  const client = new GitHubClient({
+    token: "test-token",
+    owner: "appiah233",
+    repo: "Picksy",
+    fetchImpl: mockFetch,
+  });
+
+  const res = await client.createPullRequestReview(10, {
+    body: "Automated verification review",
+    event: "APPROVE",
+    commitId: "749aff6168a875384c1f1279dacb9cd603e7ed7b",
+  });
+
+  assert.equal(res.ok, true);
+  assert.equal(submittedPayload.event, "COMMENT"); // Fallback succeeded
+  assert.equal(submittedPayload.commit_id, "749aff6168a875384c1f1279dacb9cd603e7ed7b");
+});
+
+test("Server: Webhook submits formal PR review when prReviews is enabled", async () => {
+  const sha = "a5e8c47b59379685a5bc6592d6e336e4f3a7a912";
+  const postedReviews = [];
+
+  const mockGithubClient = {
+    async getPullRequest() {
+      return {
+        ok: true,
+        data: {
+          number: 5,
+          title: "feat(home): discovery design",
+          body: "Verified change",
+          head: { sha, ref: "feat/homepage-discovery-design" },
+          changed_files: 1,
+        },
+      };
+    },
+    async getPullRequestFiles() {
+      return {
+        ok: true,
+        data: [{ filename: "public/picksy-hero.webp" }],
+      };
+    },
+    async getCommitCheckRuns() {
+      return {
+        ok: true,
+        data: {
+          check_runs: [
+            { name: "test-and-build", head_sha: sha, status: "completed", conclusion: "success" },
+            { name: "CodeQL JavaScript/TypeScript", head_sha: sha, status: "completed", conclusion: "success" },
+            { name: "Production dependency audit", head_sha: sha, status: "completed", conclusion: "success" },
+            { name: "public-baseline", head_sha: sha, status: "completed", conclusion: "success" },
+          ],
+        },
+      };
+    },
+    async postOrUpdatePrComment() {
+      return { ok: true, status: 200 };
+    },
+    async createPullRequestReview(prNumber, reviewOpts) {
+      postedReviews.push({ prNumber, ...reviewOpts });
+      return { ok: true, status: 200 };
+    },
+  };
+
+  const bot = createVerificationBotServer({
+    port: 3106,
+    webhookSecret: WEBHOOK_SECRET,
+    ownerToken: "test-owner-token-secret",
+    githubClient: mockGithubClient,
+    policy: {
+      ...policy,
+      features: { prComments: true, prReviews: true },
+    },
+  });
+
+  await bot.start();
+
+  try {
+    const prBody = JSON.stringify({
+      pull_request: {
+        number: 5,
+        head: { sha, ref: "feat/homepage-discovery-design" },
+      },
+    });
+    const prSig = createHmac("sha256", WEBHOOK_SECRET).update(Buffer.from(prBody)).digest("hex");
+
+    const prRes = await fetch("http://localhost:3106/webhooks/github", {
+      method: "POST",
+      headers: {
+        "x-hub-signature-256": `sha256=${prSig}`,
+        "x-github-delivery": "pr-review-delivery-1",
+        "x-github-event": "pull_request",
+        "Content-Type": "application/json",
+      },
+      body: prBody,
+    });
+    assert.equal(prRes.status, 200);
+    assert.equal(postedReviews.length, 1);
+    assert.equal(postedReviews[0].prNumber, 5);
+    assert.equal(postedReviews[0].event, "APPROVE");
+    assert.ok(postedReviews[0].body.includes("Picksy GitHub Verification Bot Report"));
+  } finally {
+    await bot.stop();
+  }
+});
+
+test("Server waits for all required checks on the current head before commenting or reviewing", async () => {
+  const sha = "d".repeat(40);
+  const comments = [];
+  const reviews = [];
+  const notifications = [];
+  let checks = mockPassingChecks().map((run) => ({ ...run, head_sha: sha }));
+  const githubClient = {
+    async getPullRequest(number) {
+      return { ok: true, data: {
+        number, head: { sha, ref: "feat/homepage-discovery-design" },
+        changed_files: 1, title: "PR", body: "",
+      } };
+    },
+    async getPullRequestFiles() {
+      return { ok: true, data: [{ filename: "public/picksy-hero.webp" }] };
+    },
+    async getCommitCheckRuns() {
+      return { ok: true, data: { check_runs: checks, total_count: checks.length } };
+    },
+    async postOrUpdatePrComment(number, body) {
+      comments.push({ number, body });
+      return { ok: true };
+    },
+    async createPullRequestReview(number, options) {
+      reviews.push({ number, ...options });
+      return { ok: true };
+    },
+    async getIssueComments() {
+      return { ok: true, data: notifications.map((body) => ({ body })) };
+    },
+    async createIssueComment(number, body) {
+      notifications.push(body);
+      return { ok: true };
+    },
+  };
+  const bot = createVerificationBotServer({
+    port: 3107, webhookSecret: WEBHOOK_SECRET, ownerToken: "owner", githubClient,
+    policy: { ...policy, features: { prComments: true, prReviews: true } },
+    notificationUser: "appiah233",
+  });
+  await bot.start();
+  let delivery = 0;
+  async function notify() {
+    const body = JSON.stringify({ pull_request: { number: 5, head: { sha, ref: "feat/homepage-discovery-design" } } });
+    const signature = createHmac("sha256", WEBHOOK_SECRET).update(Buffer.from(body)).digest("hex");
+    const response = await fetch("http://localhost:3107/webhooks/github", {
+      method: "POST",
+      headers: {
+        "x-hub-signature-256": `sha256=${signature}`,
+        "x-github-delivery": `wait-checks-${++delivery}`,
+        "x-github-event": "pull_request",
+        "Content-Type": "application/json",
+      },
+      body,
+    });
+    assert.equal(response.status, 200);
+  }
+  try {
+    checks = checks.slice(0, 3);
+    await notify();
+    assert.equal(comments.length, 0);
+    assert.equal(reviews.length, 0);
+    assert.equal(notifications.length, 0);
+
+    checks = mockPassingChecks().map((run) => ({ ...run, head_sha: sha }));
+    checks[3] = { ...checks[3], status: "in_progress", conclusion: null };
+    await notify();
+    assert.equal(comments.length, 0);
+    assert.equal(reviews.length, 0);
+    assert.equal(notifications.length, 0);
+
+    checks[3] = { ...checks[3], head_sha: "e".repeat(40), status: "completed", conclusion: "success" };
+    await notify();
+    assert.equal(comments.length, 0);
+    assert.equal(reviews.length, 0);
+    assert.equal(notifications.length, 0);
+
+    checks[3] = { ...checks[3], head_sha: sha, conclusion: "failure" };
+    await notify();
+    assert.equal(comments.length, 1);
+    assert.equal(reviews.length, 1);
+    assert.equal(reviews[0].event, "REQUEST_CHANGES");
+    assert.equal(notifications.length, 1);
+    assert.match(notifications[0], /@appiah233.*FAILED/);
+    await notify();
+    assert.equal(notifications.length, 1);
+  } finally {
+    await bot.stop();
+  }
+});
+
+test("Server mentions the owner when PR evidence cannot be read", async () => {
+  const sha = "f".repeat(40);
+  const notifications = [];
+  const githubClient = {
+    async getPullRequest(number) {
+      return { ok: true, data: { number, head: { sha, ref: "feat/homepage-discovery-design" }, changed_files: 1 } };
+    },
+    async getPullRequestFiles() {
+      return { ok: false, error: "GitHub API unavailable" };
+    },
+    async getIssueComments() {
+      return { ok: true, data: notifications.map((body) => ({ body })) };
+    },
+    async createIssueComment(_number, body) {
+      notifications.push(body);
+      return { ok: true };
+    },
+    async postOrUpdatePrComment() {
+      assert.fail("No verdict comment should be posted without complete evidence");
+    },
+    async createPullRequestReview() {
+      assert.fail("No review should be posted without complete evidence");
+    },
+  };
+  const bot = createVerificationBotServer({
+    port: 3108, webhookSecret: WEBHOOK_SECRET, ownerToken: "owner", githubClient,
+    notificationUser: "appiah233",
+    policy: { ...policy, features: { prComments: true, prReviews: true } },
+  });
+  await bot.start();
+  try {
+    const body = JSON.stringify({ pull_request: { number: 5, head: { sha, ref: "feat/homepage-discovery-design" } } });
+    const signature = createHmac("sha256", WEBHOOK_SECRET).update(Buffer.from(body)).digest("hex");
+    const response = await fetch("http://localhost:3108/webhooks/github", {
+      method: "POST",
+      headers: {
+        "x-hub-signature-256": `sha256=${signature}`,
+        "x-github-delivery": "bot-error-notice",
+        "x-github-event": "pull_request",
+        "Content-Type": "application/json",
+      },
+      body,
+    });
+    assert.equal(response.status, 200);
+    assert.equal(notifications.length, 1);
+    assert.match(notifications[0], /@appiah233 Picksy bot could not verify PR #5/);
+  } finally {
+    await bot.stop();
+  }
+});
+
+test("GitHubClient merge uses the reviewed head SHA and rejects invalid SHA", async () => {
+  const sha = "a".repeat(40);
+  let request;
+  const client = new GitHubClient({ token: "test-token", fetchImpl: async (url, options) => {
+    request = { url, options };
+    return { ok: true, status: 200, headers: new Headers(), json: async () => ({ merged: true }) };
+  } });
+  assert.equal((await client.mergePullRequest(14, "wrong")).ok, false);
+  assert.equal(request, undefined);
+  const result = await client.mergePullRequest(14, sha);
+  assert.equal(result.ok, true);
+  assert.match(request.url, /\/pulls\/14\/merge$/);
+  assert.equal(request.options.method, "PUT");
+  assert.deepEqual(JSON.parse(request.options.body), { sha, merge_method: "squash" });
+});
+
+test("Server merges only a policy-eligible current head after passing checks and real approval", async () => {
+  const sha = "b".repeat(40);
+  const autoPolicy = { ...policy,
+    tasks: [...policy.tasks, { taskId: "TEST-AUTOMERGE", agent: "Codex", branch: "feat/test-automerge" }],
+  };
+  for (const scenario of [
+    { number: 14, expected: 1 },
+    { number: 7, expected: 0 }, // Security gate remains blocked.
+    { number: 11, expected: 0 }, // Governance documentation requires separate review.
+    { number: 13, expected: 0 }, // Documentation review is explicitly excluded.
+    { number: 15, draft: true, expected: 0 },
+    { number: 16, reviewState: "COMMENTED", expected: 0 }, // Self-review fallback.
+    { number: 17, staleHead: true, expected: 0 },
+    { number: 18, failedCheck: true, expected: 0 },
+    { number: 19, branch: "feat/unregistered-work", expected: 0 },
+  ]) {
+    const merges = [];
+    let prReads = 0;
+    const client = {
+      async getPullRequest(number) {
+        prReads++;
+        return { ok: true, data: {
+          number, state: "open", draft: scenario.draft === true,
+          base: { ref: "main" },
+          head: { sha: scenario.staleHead && prReads > 1 ? "c".repeat(40) : sha,
+            ref: scenario.branch || "feat/test-automerge", repo: { full_name: "appiah233/Picksy" } },
+          changed_files: 1, mergeable: true, mergeable_state: "clean", title: "Bot change", body: "",
+        } };
+      },
+      async getPullRequestFiles() { return { ok: true, data: [{ filename: "tools/picksy-verification-bot/server.mjs" }] }; },
+      async getCommitCheckRuns() { return { ok: true, data: { check_runs: mockPassingChecks().map((run, i) => ({
+        ...run, head_sha: sha, conclusion: scenario.failedCheck && i === 0 ? "failure" : run.conclusion,
+      })), total_count: 4 } }; },
+      async createPullRequestReview(number, options) {
+        return { ok: true, data: { state: scenario.reviewState || (options.event === "APPROVE" ? "APPROVED" : "CHANGES_REQUESTED"), commit_id: sha } };
+      },
+      async mergePullRequest(number, headSha) { merges.push({ number, headSha }); return { ok: true, status: 200, data: { merged: true } }; },
+    };
+    const bot = createVerificationBotServer({
+      port: 3110, webhookSecret: WEBHOOK_SECRET, ownerToken: "owner", githubClient: client,
+      policy: autoPolicy,
+    });
+    await bot.start();
+    try {
+      const body = JSON.stringify({ pull_request: { number: scenario.number,
+        head: { sha, ref: scenario.branch || "feat/test-automerge" } } });
+      const signature = createHmac("sha256", WEBHOOK_SECRET).update(Buffer.from(body)).digest("hex");
+      const response = await fetch("http://localhost:3110/webhooks/github", { method: "POST", headers: {
+        "x-hub-signature-256": `sha256=${signature}`, "x-github-delivery": `auto-merge-${scenario.number}`,
+        "x-github-event": "pull_request", "Content-Type": "application/json",
+      }, body });
+      assert.equal(response.status, 200);
+      assert.equal(merges.length, scenario.expected, `PR #${scenario.number}`);
+      if (scenario.expected) assert.deepEqual(merges[0], { number: scenario.number, headSha: sha });
+    } finally {
+      await bot.stop();
+    }
+  }
+});

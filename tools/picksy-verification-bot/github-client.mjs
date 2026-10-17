@@ -180,10 +180,11 @@ export class GitHubClient {
     return this._get(`/repos/${this.owner}/${this.repo}/code-scanning/alerts${query}`);
   }
 
-  async getIssueComments(issueOrPrNumber) {
+  async getIssueComments(issueOrPrNumber, page = 1) {
     const num = Number(issueOrPrNumber);
     if (!validPullNumber(num)) return { ok: false, status: 400, error: "Invalid issue or PR number" };
-    return this._request("GET", `/repos/${this.owner}/${this.repo}/issues/${num}/comments`);
+    if (!Number.isSafeInteger(page) || page < 1 || page > 20) return { ok: false, status: 400, error: "Invalid comment page" };
+    return this._request("GET", `/repos/${this.owner}/${this.repo}/issues/${num}/comments`, null, { per_page: 100, page });
   }
 
   async createIssueComment(issueOrPrNumber, body) {
@@ -228,5 +229,38 @@ export class GitHubClient {
       console.warn(`[GitHubClient] Error in postOrUpdatePrComment for PR #${issueOrPrNumber}:`, err.message);
       return { ok: false, error: err.message, status: 500 };
     }
+  }
+
+  async createPullRequestReview(pullNumber, { body, event = "COMMENT", commitId = null } = {}) {
+    const num = Number(pullNumber);
+    if (!validPullNumber(num)) return { ok: false, status: 400, error: "Invalid pull request number" };
+    if (!body || typeof body !== "string") return { ok: false, status: 400, error: "Review body must be a non-empty string" };
+
+    const payload = { body, event };
+    if (commitId && validSha(commitId)) {
+      payload.commit_id = commitId;
+    }
+
+    try {
+      let res = await this._request("POST", `/repos/${this.owner}/${this.repo}/pulls/${num}/reviews`, payload);
+      if (!res.ok && res.status === 422 && event !== "COMMENT") {
+        payload.event = "COMMENT";
+        res = await this._request("POST", `/repos/${this.owner}/${this.repo}/pulls/${num}/reviews`, payload);
+      }
+      return res;
+    } catch (err) {
+      console.warn(`[GitHubClient] Error creating PR review for PR #${pullNumber}:`, err.message);
+      return { ok: false, error: err.message, status: 500 };
+    }
+  }
+
+  async mergePullRequest(pullNumber, headSha) {
+    const num = Number(pullNumber);
+    if (!validPullNumber(num)) return { ok: false, status: 400, error: "Invalid pull request number" };
+    if (!validSha(headSha)) return { ok: false, status: 400, error: "A valid current head SHA is required" };
+    return this._request("PUT", `/repos/${this.owner}/${this.repo}/pulls/${num}/merge`, {
+      sha: headSha,
+      merge_method: "squash",
+    });
   }
 }

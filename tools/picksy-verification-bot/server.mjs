@@ -10,6 +10,16 @@ import { classifyWebhookEvent, DeliveryTracker, verifyGitHubSignature } from "./
 
 const MAX_BODY_BYTES = 2_000_000; // 2 MB body cap
 
+function requiredChecksCompleted(checkRuns, requiredChecks, headSha) {
+  return requiredChecks.every((name) => {
+    const runs = checkRuns.filter((run) => run.name === name && run.head_sha === headSha);
+    return runs.length > 0 && runs.every((run) =>
+      run.status === "completed" &&
+      typeof run.conclusion === "string" && run.conclusion.length > 0
+    );
+  });
+}
+
 function readRawBody(req) {
   return new Promise((resolve, reject) => {
     const contentLength = parseInt(req.headers["content-length"] || "0", 10);
@@ -62,6 +72,7 @@ export function createVerificationBotServer({
   webhookSecret = process.env.GITHUB_WEBHOOK_SECRET,
   ownerToken = process.env.VERIFICATION_BOT_OWNER_TOKEN,
   githubClient = new GitHubClient(),
+  notificationUser = process.env.PICKSY_BOT_NOTIFY_GITHUB_USER || "appiah233",
   port = 3001,
 } = {}) {
   if (typeof webhookSecret !== "string" || !webhookSecret) {
@@ -76,10 +87,39 @@ export function createVerificationBotServer({
   let currentConflicts = [];
   let currentMainBranchEvents = [];
 
+  async function notifyOwnerOnPr(prNumber, key, message) {
+    if (!/^[A-Za-z0-9-]{1,39}$/.test(notificationUser || "") ||
+        typeof githubClient?.getIssueComments !== "function" ||
+        typeof githubClient?.createIssueComment !== "function") return;
+    const marker = `<!-- picksy-bot-notify:${String(key).replace(/[^A-Za-z0-9:._-]/g, "_").slice(0, 150)} -->`;
+    try {
+      let page = 1;
+      while (page <= 20) {
+        const existing = await githubClient.getIssueComments(prNumber, page);
+        if (!existing.ok || !Array.isArray(existing.data)) {
+          console.warn(`[Server] Could not inspect notification comments for PR #${prNumber}`);
+          return;
+        }
+        if (existing.data.some((comment) => typeof comment.body === "string" && comment.body.includes(marker))) return;
+        if (!existing.hasNextPage) break;
+        page++;
+      }
+      if (page > 20) {
+        console.warn(`[Server] Notification comments exceed 20 pages for PR #${prNumber}`);
+        return;
+      }
+      const result = await githubClient.createIssueComment(prNumber, `${marker}\n@${notificationUser} ${message}`);
+      if (!result.ok) console.warn(`[Server] GitHub notification comment failed for PR #${prNumber}`);
+    } catch {
+      console.warn(`[Server] GitHub notification comment failed for PR #${prNumber}`);
+    }
+  }
+
   const server = createServer(async (req, res) => {
     const parsedUrl = new URL(req.url, `http://${req.headers.host || "localhost"}`);
     const pathname = parsedUrl.pathname;
     const method = req.method;
+    let verifiedWebhookPrNumber = null;
 
     try {
       // 1. Health check
@@ -204,9 +244,20 @@ export function createVerificationBotServer({
             requiresHumanReview: verification.requiresHumanReview,
           });
 
+          // A PR verdict is final only after every required check has concluded
+          // on the current head. Missing or running checks must not produce a
+          // comment or formal review, even when other checks have failed.
+          const checksComplete = !apiError && requiredChecksCompleted(
+            checkRuns, policy.requiredChecks || [], headSha
+          );
+
+          if (apiError) {
+            await notifyOwnerOnPr(prNumber, `error:${headSha}`, `Picksy bot could not verify PR #${prNumber} because it could not read complete GitHub evidence. Please inspect the bot's audit log.`);
+          }
+
           // Post or update sticky PR comment if enabled in policy
           let commentResult = null;
-          if (githubClient && typeof githubClient.postOrUpdatePrComment === "function" && policy.features?.prComments !== false) {
+          if (checksComplete && githubClient && typeof githubClient.postOrUpdatePrComment === "function" && policy.features?.prComments !== false) {
             try {
               const reportText = formatAsciiReport({
                 policy,
@@ -227,7 +278,92 @@ export function createVerificationBotServer({
             }
           }
 
-          return { verification, commentResult };
+          // Submit formal GitHub Pull Request Review if enabled in policy
+          let reviewResult = null;
+          if (checksComplete && githubClient && typeof githubClient.createPullRequestReview === "function" && policy.features?.prReviews) {
+            try {
+              let event = "COMMENT";
+              if (verification.state === VERIFICATION_STATES.VERIFIED && !verification.requiresHumanReview) {
+                event = "APPROVE";
+              } else if (
+                verification.state === VERIFICATION_STATES.FAILED ||
+                verification.state === VERIFICATION_STATES.CONFLICT ||
+                verification.state === VERIFICATION_STATES.OUT_OF_SCOPE
+              ) {
+                event = "REQUEST_CHANGES";
+              }
+              const reportText = formatAsciiReport({
+                policy,
+                codexVerification: engine.getVerification("Codex"),
+                geminiVerification: engine.getVerification("Gemini"),
+                crossAgentConflicts: currentConflicts,
+                mainBranchEvents: currentMainBranchEvents,
+                specialConditions: policy.specialConditions,
+              });
+              const reviewBody = formatPrCommentMarkdown({
+                verification,
+                policy,
+                reportText,
+              });
+              reviewResult = await githubClient.createPullRequestReview(prNumber, {
+                body: reviewBody,
+                event,
+                commitId: headSha,
+              });
+            } catch (reviewErr) {
+              console.warn(`[Server] Failed to create PR review on PR #${prNumber}:`, reviewErr.message);
+            }
+          }
+
+          // Merge only PRs tied to a registered task under owner-controlled policy.
+          // A successful comment or a self-review fallback is never an approval.
+          let mergeResult = null;
+          const mergePolicy = policy.autoMerge || {};
+          const mergeEligible = policy.features?.autoMerge === true &&
+            checksComplete && verification.state === VERIFICATION_STATES.VERIFIED &&
+            !verification.requiresHumanReview && verification.checks?.allPassed === true &&
+            (policy.requiredChecks || []).every((name) =>
+              checkRuns.filter((run) => run.name === name && run.head_sha === headSha)
+                .every((run) => run.status === "completed" && run.conclusion === "success")
+            ) &&
+            mergePolicy.requireRegisteredTask === true && Boolean(verification.matchedTask?.taskId) &&
+            Array.isArray(mergePolicy.baseBranches) && mergePolicy.baseBranches.includes(pr?.base?.ref) &&
+            !mergePolicy.excludedPullRequests?.includes(prNumber) &&
+            pr?.state === "open" && pr?.draft === false &&
+            pr?.head?.repo?.full_name === policy.repository &&
+            reviewResult?.ok === true && reviewResult.data?.state === "APPROVED" &&
+            reviewResult.data?.commit_id === headSha &&
+            typeof githubClient?.mergePullRequest === "function";
+          if (mergeEligible) {
+            const latest = await githubClient.getPullRequest(prNumber);
+            const current = latest.ok ? latest.data : null;
+            if (current?.head?.sha === headSha && current.state === "open" &&
+                current.draft === false && current.base?.ref === pr.base.ref &&
+                current.mergeable === true && current.mergeable_state === "clean") {
+              mergeResult = await githubClient.mergePullRequest(prNumber, headSha);
+              auditLog.record({
+                eventType: "AUTO_MERGE_ATTEMPTED",
+                reference: `PR #${prNumber}`,
+                githubFacts: { prNumber, headSha, status: mergeResult.status, merged: mergeResult.data?.merged === true },
+                botConclusions: { success: mergeResult.ok && mergeResult.data?.merged === true },
+                requiresHumanReview: !(mergeResult.ok && mergeResult.data?.merged === true),
+              });
+              await notifyOwnerOnPr(prNumber, `merge:${headSha}`,
+                mergeResult.ok && mergeResult.data?.merged === true
+                  ? `Picksy bot merged PR #${prNumber} after all required checks and review passed on ${headSha.slice(0, 7)}.`
+                  : `Picksy bot could not merge PR #${prNumber} at ${headSha.slice(0, 7)}. Review GitHub's merge requirements and the bot audit log.`);
+            }
+          }
+
+          if (checksComplete) {
+            await notifyOwnerOnPr(
+              prNumber,
+              `verdict:${headSha}:${verification.state}`,
+              `Picksy bot finished checking PR #${prNumber} at ${headSha.slice(0, 7)}. Verdict: **${verification.state}**. Review the bot's report on this PR.`
+            );
+          }
+
+          return { verification, commentResult, reviewResult, mergeResult, checksComplete };
         }
 
         // X-GitHub-Event is outside the signed body. Derive actionable event
@@ -264,6 +400,10 @@ export function createVerificationBotServer({
         }
 
         const classified = classifyWebhookEvent(eventType, payload);
+        if (classified.type === "pull_request") verifiedWebhookPrNumber = classified.number;
+        if (classified.type === "check_run" && classified.pullRequests?.length) {
+          verifiedWebhookPrNumber = classified.pullRequests[0].number;
+        }
 
         // Process Event
         let responseData = { status: "processed", eventType };
@@ -445,6 +585,13 @@ export function createVerificationBotServer({
       // Fallthrough: 404
       return sendJson(res, 404, { error: `Not found: ${method} ${pathname}` });
     } catch (err) {
+      if (verifiedWebhookPrNumber) {
+        await notifyOwnerOnPr(
+          verifiedWebhookPrNumber,
+          `error:processing:${req.headers["x-github-delivery"] || "unknown"}`,
+          `Picksy bot encountered a processing error for PR #${verifiedWebhookPrNumber}. Please inspect the bot's audit log.`
+        );
+      }
       return sendJson(res, 500, { error: err.message });
     }
   });
