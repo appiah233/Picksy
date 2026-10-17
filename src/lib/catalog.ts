@@ -22,9 +22,6 @@ export const catalog: CatalogAccess = createCatalogAccess(catalogRecords);
  * 5. Falls back safely to empty catalog on validation failure or network error.
  */
 export async function getCatalog(): Promise<CatalogAccess> {
-  if (process.env.NEXT_PHASE === "phase-production-build") {
-    return catalog;
-  }
   try {
     const { records, valid, errors } = await sanityCatalogAdapter.loadPublishedCatalog();
     if (valid && records && records.categories.length > 0) {

@@ -6,7 +6,16 @@ export interface SanityConfig {
   token?: string;
   fetchFn?: typeof fetch;
   timeoutMs?: number;
+  revalidate?: number;
 }
+
+export const DEFAULT_PUBLIC_SANITY_CONFIG: SanityConfig = {
+  projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID || process.env.SANITY_PROJECT_ID || "0tozsrrx",
+  dataset: process.env.NEXT_PUBLIC_SANITY_DATASET || process.env.SANITY_DATASET || "production",
+  apiVersion: process.env.NEXT_PUBLIC_SANITY_API_VERSION || process.env.SANITY_API_VERSION || "v2024-01-01",
+  token: undefined, // Public reads NEVER carry a write token
+  revalidate: 60, // 60-second ISR for public storefront queries
+};
 
 export const DEFAULT_SANITY_CONFIG: SanityConfig = {
   projectId: process.env.SANITY_PROJECT_ID || "0tozsrrx",
@@ -58,7 +67,17 @@ export class SanityClient {
     const controller = new AbortController();
     const deadline = setTimeout(() => controller.abort(), this.config.timeoutMs ?? 10_000);
     try {
-      const response = await this.fetch(url, { ...options, redirect: "error", cache: "no-store", signal: controller.signal });
+      const fetchOptions: RequestInit & { next?: { revalidate?: number | false; tags?: string[] } } = {
+        ...options,
+        redirect: "error",
+        signal: controller.signal,
+      };
+      if (typeof this.config.revalidate === "number" && this.config.revalidate > 0) {
+        fetchOptions.next = { revalidate: this.config.revalidate, tags: ["catalog"] };
+      } else {
+        fetchOptions.cache = "no-store";
+      }
+      const response = await this.fetch(url, fetchOptions);
       if (!response.ok) throw new SanityHttpError(response.status);
       return await response.json();
     } catch (error) {
@@ -87,7 +106,7 @@ export class SanityClient {
 
   async mutate(mutations: SanityMutation[]): Promise<SanityMutationResponse> {
     const { dataset, token } = this.config;
-    if (!token?.trim()) throw new Error("SANITY_API_WRITE_TOKEN is required for Content Lake mutations.");
+    if (!token?.trim()) throw new Error("SANITY_API_WRITE_TOKEN is required for Content Lake mutations. Public read client cannot perform mutations.");
     const data = await this.request(`${this.baseUrl}/data/mutate/${dataset}?returnIds=true`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -101,4 +120,9 @@ export class SanityClient {
     return data as unknown as SanityMutationResponse;
   }
 }
+export const publicSanityClient = new SanityClient(DEFAULT_PUBLIC_SANITY_CONFIG);
 export const sanityClient = new SanityClient();
+
+export function createPublicSanityClient(config: Partial<SanityConfig> = {}): SanityClient {
+  return new SanityClient({ ...DEFAULT_PUBLIC_SANITY_CONFIG, ...config, token: undefined });
+}
