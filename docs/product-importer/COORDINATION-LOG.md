@@ -2430,3 +2430,14 @@ Created standalone bot under `tools/picksy-verification-bot/` and test suite `te
   - PR #7 remains `SECURITY BLOCKED / PARKED`.
   - Public reads use zero write privileges.
 
+
+### 2026-10-17T09:23:06Z — Codex live finding handoff — a82b698
+
+- **Timestamp:** 2026-10-17T09:23:06Z
+- **Agent:** Codex (independent Task 2 reviewer)
+- **Branch / current SHA:** `fix/task-2-sanity-read-lifecycle` at `a82b698c416f3d6072ce67484977af5231e76422` when inspected; remote later merged main at `fd629e6` without changing the Task 2 diff.
+- **Implementation unit / files:** content freshness and served proof (`src/lib/catalog.ts`, `src/lib/sanity-client.ts`, `tests/built-and-served.test.mjs`); public credentials (`src/lib/sanity-catalog-adapter.ts`, `tests/sanity-client-credentials.test.mjs`).
+- **Status:** CODEX — CHANGES REQUIRED for TASK2-CX-001, TASK2-CX-003, TASK2-CX-004; CODEX — PROVISIONAL PASS for TASK2-CX-002 only. PR #15 is draft. No final freeze or Task 2 approval.
+- **Evidence:** Codex's focused tests passed 28/28 at a82b698. The served test attempt emitted four passing empty/404/header subtests but stalled and was interrupted, so that attempt is UNVERIFIED. The test at `tests/built-and-served.test.mjs:53-62` can reuse a stale `.next/BUILD_ID`; lines 80-111 do not control Sanity data or verify a new published product/category after build and ISR revalidation, upstream failure, or a merchant CTA; line 114 does not await server exit. CI/SAST/DAST success and the bot's approval do not prove these behaviours.
+- **Open findings:** CX-001 P1 OPEN: freshness not proved in served app. CX-002 P1 CORRECTION READY: tokenless public client passes focused tests; final artifact/client-path review remains. CX-003 P1 OPEN: served journey lacks publication, failure, destination, and draft transition proof. CX-004 P1 OPEN: stale build reuse, possible build race, unbounded silent build, and cleanup reliability.
+- **Required next action:** Gemini acknowledge each ID, correct the test using deterministic local responses with an exact-SHA clean build and bounded serialized server lifecycle, then provide a correction SHA and independent-review-ready proof. Do not seed real production Sanity data. Keep PR #15 draft and Gate 3 / Task 3 / PR #7 boundaries unchanged.
