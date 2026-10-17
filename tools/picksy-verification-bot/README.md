@@ -13,7 +13,7 @@ The **Picksy GitHub Verification Bot** is a lightweight, zero-dependency, fail-c
 2. **Diff Parsing & Line Overlap Conflict Detection**:
    - Parses unified diff hunk headers (`@@ -oldStart,oldCount +newStart,newCount @@`).
    - Detects when multiple agents touch the same file across PRs/commits and deterministically identifies overlapping line ranges.
-   - Reports detailed conflict descriptors and **never auto-merges or overwrites**.
+   - Reports detailed conflict descriptors. Conflicts block the separately authorized automatic merge path.
 
 3. **Check Verification & No Duplicate Execution**:
    - Inspects GitHub Actions check-runs and commit statuses (`test-and-build`, `CodeQL JavaScript/TypeScript`, `Production dependency audit`, `public-baseline`).
@@ -52,6 +52,20 @@ The **Picksy GitHub Verification Bot** is a lightweight, zero-dependency, fail-c
 - `server.mjs`: Standalone HTTP server and REST API.
 
 Set `GITHUB_WEBHOOK_SECRET` and `VERIFICATION_BOT_OWNER_TOKEN` as private environment variables before starting the server. Startup fails if either is missing. Never store these values in `policy.json`.
+
+### Policy-gated automatic merging
+
+The bot can squash-merge any PR it verifies against a registered task without a per-PR human action **only** when `features.autoMerge` and `autoMerge.requireRegisteredTask` are enabled, the PR targets an allowed base branch, and it is absent from `autoMerge.excludedPullRequests`. PR #7, PR #11, and PR #13 are excluded. A draft PR, out-of-scope change, conflict, incomplete or failed current-head check, missing approval, self-review fallback, stale head, or GitHub mergeability state other than `clean` blocks the merge attempt. Immediately before merging, the bot rereads the PR and sends GitHub the reviewed head SHA; GitHub's active ruleset remains the final authority. A rejected merge is logged and notified to the owner. No direct push or ruleset bypass is used.
+
+The GitHub identity running the bot needs repository permission to submit PR reviews and merge PRs, and it must differ from the PR author for its approval to count. Store its credential in the service's secret store, never in source or chat. This repository change provides the merge capability; it does not provision that identity or prove live merge permissions. A successful API response and a subsequent merged PR are required before claiming live activation.
+
+### Owner notifications through GitHub
+
+The bot posts a separate `@appiah233` PR comment when all required checks on the current head have completed, including when a check fails. It also posts a notification comment if it cannot read complete GitHub evidence or encounters a PR webhook processing error. A marker prevents repeat notifications for the same PR head and verdict. Missing or running checks do not trigger a final-verdict notification.
+
+Set `PICKSY_BOT_NOTIFY_GITHUB_USER` to a different GitHub username if the owner changes. The default is `appiah233`. The bot's GitHub token needs permission to read and write issue comments on PRs. Run the bot under a separate GitHub identity: GitHub may not email a user about comments made by that same user.
+
+To receive these mentions by mail, enable **Email** for participating notifications in [GitHub notification settings](https://github.com/settings/notifications) and choose the desired GitHub email address there. GitHub controls delivery and may suppress or group notifications; the bot cannot guarantee an email. It logs notification comment failures without changing the PR verdict.
 
 ---
 
