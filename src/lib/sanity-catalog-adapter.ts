@@ -7,7 +7,7 @@ import type {
   Review,
 } from "./catalog-types.ts";
 import { validateCatalog } from "./catalog-validation.ts";
-import { SanityClient, sanityClient } from "./sanity-client.ts";
+import { SanityClient, publicSanityClient } from "./sanity-client.ts";
 
 export interface SanityCategoryDoc {
   _id: string;
@@ -150,7 +150,7 @@ export const PUBLISHED_CATALOG_GROQ = `{
 export class SanityCatalogAdapter {
   private client: SanityClient;
 
-  constructor(client: SanityClient = sanityClient) {
+  constructor(client: SanityClient = publicSanityClient) {
     this.client = client;
   }
 
