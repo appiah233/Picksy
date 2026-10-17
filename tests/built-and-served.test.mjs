@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
+import { existsSync } from "node:fs";
 import { createServer } from "node:net";
 import path from "node:path";
 import test from "node:test";
@@ -16,9 +17,23 @@ function getFreePort() {
   });
 }
 
-async function waitForServer(url, timeoutMs = 30000) {
+async function waitForServer(url, serverProcess, timeoutMs = 30000) {
+  let serverOutput = "";
+  let exited = false;
+  let exitCode = null;
+
+  serverProcess.stdout.on("data", (d) => { serverOutput += d.toString(); });
+  serverProcess.stderr.on("data", (d) => { serverOutput += d.toString(); });
+  serverProcess.on("exit", (code) => {
+    exited = true;
+    exitCode = code;
+  });
+
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
+    if (exited) {
+      throw new Error(`Server exited prematurely with code ${exitCode}. Output:\n${serverOutput}`);
+    }
     try {
       const res = await fetch(url);
       if (res.status === 200 || res.status === 404) return true;
@@ -27,13 +42,26 @@ async function waitForServer(url, timeoutMs = 30000) {
     }
     await new Promise((r) => setTimeout(r, 500));
   }
-  throw new Error(`Timed out waiting for server at ${url} after ${timeoutMs}ms`);
+  throw new Error(`Timed out waiting for server at ${url} after ${timeoutMs}ms. Output:\n${serverOutput}`);
 }
 
 test("Built-and-Served Production Journey", async (t) => {
   const port = await getFreePort();
   const baseUrl = `http://127.0.0.1:${port}`;
   const repoRoot = path.resolve(import.meta.dirname, "..");
+
+  const buildIdPath = path.join(repoRoot, ".next", "BUILD_ID");
+  if (!existsSync(buildIdPath)) {
+    execFileSync(
+      process.execPath,
+      [path.join(repoRoot, "node_modules", "next", "dist", "bin", "next"), "build"],
+      {
+        cwd: repoRoot,
+        stdio: "ignore",
+        env: { ...process.env, NEXT_TELEMETRY_DISABLED: "1" },
+      }
+    );
+  }
 
   let serverProcess;
   try {
@@ -47,10 +75,7 @@ test("Built-and-Served Production Journey", async (t) => {
       }
     );
 
-    serverProcess.stdout.resume();
-    serverProcess.stderr.resume();
-
-    await waitForServer(baseUrl, 40000);
+    await waitForServer(baseUrl, serverProcess, 40000);
 
     await t.test("Served home page returns 200 OK with empty catalogue state under Gate 3", async () => {
       const res = await fetch(`${baseUrl}/`);
