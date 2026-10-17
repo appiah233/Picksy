@@ -2,6 +2,10 @@
 
 Status: **BLOCKED**. No MVP release tag or production-readiness claim is authorized. Scope is security remediation only. Gate 3 business-content approval remains separate.
 
+The owner-approved [controlled dependency investigation](release-remediation-options.md) records every `braces` path and the A–E decision matrix. ArchitectAgent and SecurityAgent independently reviewed that matrix; no supported A–D option removed all production paths, so implementation stopped before a major-version change.
+
+The [controlled security findings](controlled-security-findings.md) record the subsequent per-alert and per-package investigation, local-build reachability limits, and PR #8 validation.
+
 ## Evidence and gate decision
 
 - PR [#7](https://github.com/appiah233/Picksy/pull/7), revision `b4e0ed9`, replaces the dated High-severity audit exceptions with a zero High/Critical gate. SecurityAgent and TestingAgent independently reviewed the checker. Clean and malformed fixtures behave as expected; the current audit report fails on 13 High findings. The PR is open because its audit check correctly fails. GitHub reports no active branch ruleset or `main` branch protection, so a protected-branch integration process is not presently available.
@@ -9,6 +13,7 @@ Status: **BLOCKED**. No MVP release tag or production-readiness claim is authori
 - Existing `main` CI, SAST action execution, and public DAST passed on `015eef0`. CodeQL action success does not close its eight open High alerts.
 - On PR #7 revision `b4e0ed9`, [CI run 38908449044](https://github.com/appiah233/Picksy/actions/runs/38908449044) passed the repository's `npm ci`, `npm test`, and `npm run test:build` job; [SAST run 38908448749](https://github.com/appiah233/Picksy/actions/runs/38908448749) passed CodeQL and failed the production dependency audit as required. TestingAgent independently reran six checker fixtures (clean pass; High, Critical, metadata mismatch, malformed severity, and boolean count fail) and the live npm audit (13 High, gate fails). [Public DAST run 38906751875](https://github.com/appiah233/Picksy/actions/runs/38906751875) passed on baseline `main`; the script-only PR does not trigger DAST under its path filter.
 - Local `npm test` was manually interrupted during ESLint after it stalled in this shared Windows checkout. An untracked `.next-dev` cache was present during the first attempt; it was subsequently removed by another workspace process, and a second local attempt also stalled. The clean-checkout CI run above is the full validation evidence for the PR revision.
+- On [PR #8](https://github.com/appiah233/Picksy/pull/8) revision `e8f8319`, [CI run 38920198043](https://github.com/appiah233/Picksy/actions/runs/38920198043) passed clean `npm ci`, `npm test` (lint, typecheck, 194/194 tests), and `npm run test:build` (compiled, 4/4 build assertions). [SAST run 38920198207](https://github.com/appiah233/Picksy/actions/runs/38920198207) passed CodeQL, while the existing dependency audit job passed only under `main`'s dated exceptions. [Public DAST run 38920198051](https://github.com/appiah233/Picksy/actions/runs/38920198051) passed. TestingAgent independently verified CI logs and local targeted 15/15 regression tests; SecurityAgent reviewed the plain-text invariant. The five normalizer fixes are verified on this draft PR but remain open default-branch alerts until integration and a fresh `main` analysis.
 
 ## High dependency findings
 
@@ -30,7 +35,7 @@ Path abbreviations: `S` = direct `sanity@4.22.1`; `N` = direct `next@15.5.27`. `
 | `preferred-pm` | W; package-manager detection | Inherits braces; npm proposes Sanity 6 major. | Audit `via`, `npm ls` |
 | `postcss` | N → `postcss@8.4.31`; CSS build tooling | Patched `8.5.23` exists for the newest reported map advisory; Next pins its copy. npm proposes `next@16.4.2` major; test a supported Next update, not an unreviewed override. | [upstream advisory](https://github.com/postcss/postcss/security/advisories/GHSA-fxqj-rqcc-2cmp), audit, `npm ls` |
 
-No dependency remediation has yet passed compatibility checks. The unpatched braces chain prevents a zero-High audit through routine patch updates; do not treat a temporary exception as remediation.
+No dependency remediation has yet passed compatibility checks. The unpatched braces chain prevents a zero-High audit through routine patch updates; do not treat a temporary exception as remediation. SecurityAgent classified deployed `braces` reachability **D, unverified**: all 17 local production server NFT traces at deployed commit `103f33a` omit the affected chain, but the actual Vercel deployment artifact was unavailable. The remaining `adm-zip` and nested `postcss` candidates cross their parents' declared version ranges. Full package paths and owner decision needs are in the controlled findings.
 
 ## CodeQL High alert triage
 
@@ -47,8 +52,17 @@ No dependency remediation has yet passed compatibility checks. The unpatched bra
 | [#7](https://github.com/appiah233/Picksy/security/code-scanning/7) | `js/incomplete-url-substring-sanitization`, Sanity integration test | **Demonstrated false positive for production security impact** | `.includes(...)` asserts a mocked request URL, not URL validation in production. |
 | [#8](https://github.com/appiah233/Picksy/security/code-scanning/8) | `js/incomplete-url-scheme-check`, normalizer | **Unresolved** | Removing `javascript:` leaves other active schemes intact. These fields currently render as text, but the sanitizer contract and downstream usage require review. |
 
-SecurityAgent reviewed the individual classifications. No alert was dismissed or suppressed.
+SecurityAgent reviewed the individual classifications. PR #8 fixes the text-only boundary behind #1, #2, #3, #5, and #8, with tests-first regression, clean CI, branch CodeQL, DAST, and independent TestingAgent review above. No browser-executing sink was demonstrated, and the five alerts remain open on `main` pending integration. #4, #6, and #7 remain test-only findings with no production path demonstrated; their analyzer patterns are real. No alert was dismissed or suppressed.
 
-## Owner-supplied Gate 3 inputs
+## Owner-supplied Gate 3 inputs (Release-Blocker Register)
 
-Before public catalogue publication, the owner must provide an approved product/category selection; verifiable merchant and affiliate-program identity; the exact HTTPS destination and redirects; agreement showing Picksy may use that destination; a stable private authorization-evidence reference; sourced product facts and named editorial review with real dates and method; approved affiliate disclosure; recheck owner/date; and an approved production HTTPS origin. These records must be independently checked under [the evidence packet](production-affiliate-evidence-packet.md). None may be fabricated to clear this gate.
+| Field | Authoritative Record |
+| --- | --- |
+| **Blocker ID** | `RB-GATE3-AFFILIATE-AUTH` |
+| **Current Status** | **OWNER REQUIRED / BLOCKED** |
+| **Affected Merchants / Offers** | All production merchant records (`merchants`), affiliate destination records (`affiliateDestinations`), and active merchant offers (`offers`) in `src/content/catalog.ts` and any upstream Sanity/importer promotion candidates lacking verified merchant authorization. |
+| **Required Authorization Evidence** | Verifiable merchant and affiliate-program identity; active Picksy account; agreement/terms authorizing exact HTTPS destination, redirect chain, link parameters, and promotional use; stable private `authorizationReference`; sourced product facts and named editorial review with real evaluation/publication/review dates; approved affiliate disclosure wording; named recheck owner/date; and approved production HTTPS origin, independently verified under [the evidence packet](production-affiliate-evidence-packet.md). |
+| **Owner Decision Required** | Owner must supply the private authorization evidence packet for independent verification before activating any merchant offer, **or** explicitly decide whether to pursue a scoped editorial-only / selective-offer release where unauthorized offers remain excluded (`active: false` / omitted) while only independently verified editorial reviews or authorized offers are published. |
+| **Effect on Production Publication** | Production catalogue publication of unverified merchant affiliate offers remains strictly blocked (`src/content/catalog.ts` publishes zero unverified merchant offers). Storefront UI renders an empty/upcoming state or plain editorial review without a merchant CTA whenever an approved active offer is absent. |
+
+Before public catalogue publication, none of the required records above may be fabricated or assumed to clear this gate.

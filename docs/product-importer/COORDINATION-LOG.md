@@ -2208,3 +2208,35 @@ Decouple Sanity Studio from server-side compilation using dynamic client-only im
 - **Full Test Suite (`npm test`)**: 193/193 tests passed (0 failures).
 - **Build Isolation (`npm run test:build`)**: 4/4 tests passed (0 failures).
 - **Typecheck & Lint**: 0 errors, 0 warnings.
+### Milestone C-VERIF-BOT-1: Picksy GitHub Verification Bot implementation
+
+- **Timestamp:** 2026-10-16T15:18:00Z
+- **Agent / ownership:** Codex; Backend, Database, and Security Owner (with TestingAgent verification).
+- **Type / status:** FEAT_IMPLEMENTED; VERIFIED (all 22 bot tests + 193 project tests + 4 build tests passing).
+- **Branch / baseline:** `feat/github-verification-bot` from `main` (`103f33a`).
+
+#### 1. Problem Statement & Objective
+Establish an independent, fail-closed multi-agent verification and monitoring engine for GitHub (`appiah233/Picksy`) to observe pull requests, commits, check-runs, and `main` branch pushes without duplicating CI executions or altering product code.
+
+#### 2. Scope & Boundaries
+Created standalone bot under `tools/picksy-verification-bot/` and test suite `tests/verification-bot.test.mjs`. Zero product, storefront, importer, Sanity, or auth files modified.
+
+#### 3. Architecture & Implementation Summary
+1. `tools/picksy-verification-bot/policy.json`: Trusted owner-governed policy, special conditions, required checks, and task ownership registry for Codex and Gemini.
+2. `tools/picksy-verification-bot/types-and-policy.mjs`: Strict verification states, scope classifications, check statuses, and path pattern matcher.
+3. `tools/picksy-verification-bot/github-client.mjs`: Read-only, fail-closed GitHub REST API client with SSRF protection, timeout, and response size limits.
+4. `tools/picksy-verification-bot/webhook.mjs`: Constant-time HMAC signature verification, bounded LRU delivery replay protection, and event normalization.
+5. `tools/picksy-verification-bot/verification-engine.mjs`: Change scope classifier, unified diff overlap detection, check status evaluator, claim validator, and prompt injection defense.
+6. `tools/picksy-verification-bot/audit-log.mjs`: Append-only structured audit logger with credential redaction.
+7. `tools/picksy-verification-bot/formatter.mjs`: ASCII report formatter and mobile PWA snapshot projection.
+8. `tools/picksy-verification-bot/server.mjs`: Zero-dependency Node.js HTTP server and REST API.
+9. `tests/verification-bot.test.mjs`: Comprehensive test suite covering all 20 mandatory scenarios and end-to-end HTTP endpoints.
+10. `tools/picksy-verification-bot/README.md` & `docs/verification-bot-report.md`: Complete documentation and live repo evaluation report.
+
+#### 4. Verification Evidence
+- `node --experimental-strip-types --test tests/verification-bot.test.mjs`: **22/22 passed** (0 failures).
+- `npm run lint`: **0 errors, 0 warnings**.
+- `npm run typecheck`: **0 errors**.
+- `npm test`: **215/215 passed** (193 project tests + 22 bot tests, 0 failures).
+- `npm run test:build`: **4/4 passed** (0 failures).
+- Evaluated against real GitHub repository state (`appiah233/Picksy` PRs #2, #5, #6, #7, #8).

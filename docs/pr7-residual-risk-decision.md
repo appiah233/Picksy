@@ -1,0 +1,70 @@
+# PR #7 residual-risk decision record — 2026-10-16
+
+**Status: PR #7 BLOCKED; technical remediation investigation COMPLETE; migration recommendation C; owner decision: DEFER RISK ACCEPTANCE.** This is an investigation record, not a risk acceptance, migration approval, release approval, or change to the zero High/Critical gate. [PR #7](https://github.com/appiah233/Picksy/pull/7) remains draft and unmerged; its `Production dependency audit` check correctly fails.
+
+## Decision and evidence boundary
+
+**C — no investigated supported major-version migration currently removes the High findings.** The current committed production dependency graph reports **13 High, 11 Moderate, 0 Critical**. A separate, clean, lockfile-only candidate with Sanity 6.19.0, Next.js 16.4.2, `next-sanity` 13.3.4, `@sanity/vision` 6.19.0, and React/React DOM compatible with those peer ranges reports **9 High, 10 Moderate, 0 Critical**. The candidate was resolved and audited outside the repository; its lockfile root had no `picksy` file/self dependency. It was not installed, built, deployed, or exercised as a Picksy application. No source, dependency, lockfile, workflow, threshold, or exception in the repository was changed for this investigation.
+
+| Evidence | Result |
+| --- | --- |
+| Current locked tree and [PR #7 SAST run](https://github.com/appiah233/Picksy/actions/runs/38908448749) | `npm audit --omit=dev --json`: 13 High / 11 Moderate / 0 Critical; strict checker exits 1 and names all 13 package entries. |
+| Isolated candidate `npm install --package-lock-only --ignore-scripts` followed by `npm audit --omit=dev --json` | 9 High / 10 Moderate / 0 Critical. The nine High entries are `@sanity/cli`, `@sanity/codegen`, `braces`, `chokidar`, `fast-glob`, `globby`, `js-yaml`, `micromatch`, and `smol-toml`. |
+| Candidate package metadata and resolved lockfile | `adm-zip@0.6.1` and `postcss@8.5.23` replace vulnerable installed copies, but `braces@3.0.3` remains. |
+| [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) and `npm view braces version` | The advisory affects `braces <=3.0.3`; `3.0.3` is still the latest published version and no patched release is listed. |
+
+The 13 baseline High entries are **package entries, not 13 independent attack paths**. The installed production graph and the candidate graph must not be conflated with deployed code or attacker-reachable execution.
+
+## Root paths and major-version result
+
+| Root/direct dependency | Current affected production path | Candidate path and consequence |
+| --- | --- | --- |
+| `sanity@4.22.1` | `sanity → @sanity/cli@4.22.1 → @sanity/runtime-cli@12.4.0 → adm-zip@0.5.18` | `sanity@6.19.0 → @sanity/cli@8.18.0 → @sanity/runtime-cli@17.15.0 → adm-zip@0.6.1`. This candidate removes the reported `adm-zip` High path. |
+| `sanity@4.22.1` | `sanity → chokidar@3.6.0 → braces@3.0.3` | Sanity 6 removes this direct watcher edge, but the candidate CLI dependency tree still contains `chokidar@3.6.0 → braces@3.0.3`; the candidate audit retains both High entries. |
+| `sanity@4.22.1` | `sanity → @sanity/cli → @sanity/codegen → globby@11.1.0 → fast-glob@3.3.1 → micromatch@4.0.8 → braces@3.0.3` | `sanity@6.19.0 → @sanity/cli@8.18.0 → @sanity/codegen@8.2.0 → globby@11.1.0 → fast-glob@3.3.3 → micromatch@4.0.8 → braces@3.0.3`. The vulnerable leaf remains. |
+| `sanity@4.22.1` | `sanity → preferred-pm@4.1.1 → find-yarn-workspace-root2@1.2.16 → micromatch@4.0.8 → braces@3.0.3` | This particular chain is absent from the investigated candidate; the watcher and codegen `braces` chains above remain. |
+| `next@15.5.27` | `next → postcss@8.4.31` (nested Next copy; the separate root PostCSS copy is newer) | `next@16.4.2 → postcss@8.5.23`. This candidate removes the reported nested `postcss` High path. |
+| `sanity@6.19.0` in candidate | No equivalent baseline entry | `sanity → @sanity/cli@8.18.0 → @vercel/frameworks@3.29.0 → js-yaml@3.13.1` and nested `smol-toml@1.5.2` add High entries in the candidate audit. |
+
+The current 13 entries consist of the direct Sanity/CLI/runtime and inherited `adm-zip` entries, the Sanity watcher/glob and inherited `braces` entries, and Next's nested `postcss` entry; the [release audit](release-blocker-audit.md) lists each package individually. The investigated versions are the exact versions resolved in the temporary candidate, not a proposed repository lockfile. No identified Sanity or Next major removes all `braces` paths. A major migration therefore **does not satisfy PR #7's zero High/Critical security gate and is not justified solely as dependency remediation**. The candidate's lower count is not gate clearance, and no finding was hidden or excepted.
+
+## Compatibility and regression risk
+
+The candidate cannot be applied as `sanity` alone: current `next-sanity@11.6.13` and `@sanity/vision@4.22.1` peer ranges exclude Sanity 6. A coordinated candidate needs Sanity 6, Vision 6, `next-sanity` 12/13, Next 16, compatible React/React DOM (at least 19.2.3 for `next-sanity` 13), and Node >=22.12 for Sanity 6. The repository currently allows Node >=22.0.0. [Sanity's v4→v5](https://www.sanity.io/docs/help/v4-to-v5) and [v5→v6](https://www.sanity.io/docs/help/v5-to-v6) guides describe the React/Node floors, TypeGen naming, development strict mode, and auth/search default changes. The [next-sanity v11→v12](https://github.com/sanity-io/next-sanity/blob/main/packages/next-sanity/MIGRATE-v11-to-v12.md) and [v12→v13](https://github.com/sanity-io/next-sanity/blob/main/packages/next-sanity/MIGRATE-v12-to-v13.md) guides add peer and live-content invalidation changes. [Next 16](https://nextjs.org/docs/app/guides/upgrading/version-16) uses Turbopack for builds by default and deprecates the `middleware` file/function convention in favor of `proxy`.
+
+Required review surfaces before **any separately authorized** implementation include `package.json`, `package-lock.json`, `next.config.ts`, `src/middleware.ts`, `sanity.config.ts`, `sanity.cli.ts`, `src/app/studio/[[...tool]]`, `src/sanity/plugins`, `src/sanity/schemaTypes`, `src/sanity/lib/live.ts`, and CI Node/build configuration. The embedded Studio supplies `/studio/dashboard` and `/studio/product-importer`; `/admin` and `/admin/imports` redirect there. Existing Studio server-rendering decoupling and `experimental.optimizePackageImports` in `next.config.ts` need particular review under Next 16's Turbopack build default. The custom dashboard, importer, Studio navigation, current-user display, auth, and public App Router pages could regress. Curator edits must survive save failures. Import must remain draft-only until human editorial review and deliberate publication; public pages must receive published, validated records only. Design review must compare authenticated/guest, keyboard/focus, loading, error, and public catalogue states against the current experience.
+
+DatabaseAgent found no documented requirement to transform stored documents or rewrite schemas/GROQ solely for Studio 4→6. Picksy's `src/lib/sanity-client.ts` uses a custom Content Lake HTTP client, while `sanity-draft-store.ts` and `sanity-catalog-adapter.ts` enforce raw-draft versus published-catalogue behavior. The frozen `ProductImportCandidate`, `ImportDraft`, and `DuplicateCheckResult` contracts, `drafts.<id>` isolation, revision and duplicate invariants, `merchant.approvedHosts` plus `authorizationReference` destination authorization, and `validateCatalog` before public rendering must survive a migration. That is **not** proof of data compatibility: staging must verify schema load, query/mutation round trips, revision conflicts, draft/published isolation, and the importer publication contract. Product and design risk is material even if a future candidate installs and builds.
+
+## Production reachability and security conclusion
+
+SecurityAgent classifies `braces` production reachability **D — UNVERIFIED**. Current lockfile installation is proven. The known call inputs in Sanity's CLI/codegen, file watching, and workspace detection appear to be repository configuration and local filesystem paths; no Picksy HTTP request-to-`braces` vulnerable-function edge was demonstrated. A local production build at older commit `103f33a` omitted the chains from 17 server NFT traces, but the current production commit is `6420872` and the Vercel deployment redirects to SSO. The actual deployed function files and runtime module usage could not be inspected. The old local traces do **not** prove current deployed non-reachability; classification C (build/tooling only), B (deployed without demonstrated attack path), and A (attacker reachable) are unsupported by the available deployment evidence.
+
+## Required verification before a future migration could be accepted
+
+TestingAgent's matrix is mandatory for any later, separately authorized candidate:
+
+1. In an isolated candidate checkout, capture `node --version`, the exact package/lock diff, clean `npm ci`, `npm ls sanity next next-sanity @sanity/vision @sanity/cli braces adm-zip postcss --omit=dev --all`, `npm audit --omit=dev --json`, and the unchanged PR #7 strict checker. Require **zero High and zero Critical**; a lower nonzero count is failure.
+2. Run the existing `npm test` gate (ESLint, `tsc --noEmit`, all Node tests) and `npm run test:build` (production Next build and four build-isolation assertions), plus SAST CodeQL, the separate GitHub CodeQL PR check, and public `public-baseline` DAST. Preserve current CI/DAST behavior.
+3. Browser-test the production build at `/`, `/studio`, `/studio/dashboard`, and `/studio/product-importer`; assert actual Studio JavaScript boot, both custom tools mounted, navigation, hydration, loading and error behavior, zero console errors, and correct CORS behavior. Exercise all 20 formal importer states and the Gate 3 modal at 1280×800, 768×1024, 375×667, and narrow 320px width; check overflow, keyboard operation, focus trap/return and visible focus, live-region announcements, contrast, touch targets, and semantic headings. Include cross-browser coverage and an authenticated hosted-preview screen-reader pass with NVDA or VoiceOver, the outstanding DesignAgent condition. HTTP 200 and the existing render harness are insufficient.
+4. Exercise unauthenticated admin denial and authenticated preview → draft → human edit → save → deliberate publish using controlled identities and fixture adapters. Verify SSRF and authorization failures, duplicate warnings, optimistic revision handling, no browser write token, and Gate 3 publication restrictions.
+5. Against a disposable, nonproduction Sanity dataset, verify schema load, Content Lake read/write and revision-conflict round trips, GROQ, and published-versus-draft catalogue isolation. Do not create real merchants, products, destinations, or editorial evidence.
+6. Inspect candidate server traces, browser bundles, and actual deployment artifacts/runtime module usage for `braces`, `adm-zip`, and PostCSS; trace any production input to the vulnerable function. Public DAST alone does not cover Studio or admin surfaces. Obtain independent SecurityAgent, TestingAgent, ArchitectAgent, ProductAgent, DatabaseAgent, and, if user-facing behavior changes, DesignAgent review before acceptance.
+
+These tests were **defined, not run** against a migrated application because implementation was not authorized and the candidate already fails the audit gate.
+
+## Owner decision — 2026-10-16
+
+The owner **defers risk acceptance**. No security exception is authorized. PR #7 remains draft, unmerged, and blocked; Picksy remains release-blocked. No Sanity 6 / Next.js 16 major migration is authorized solely to remediate this gate. Reassess when upstream remediation or stronger production-artifact and runtime reachability evidence becomes available. The zero High/Critical gate remains unchanged.
+
+The paths available for a later owner decision remain:
+
+1. Keep Picksy release-blocked pending an upstream fix that removes the vulnerable production dependency paths and a fresh zero High/Critical audit.
+2. Obtain stronger evidence from the **actual production artifact and runtime** capable of proving the vulnerable path cannot be reached; the present D classification is insufficient for that claim.
+3. If project governance permits, consider a **formally documented, time-bounded owner risk acceptance** specifying scope, expiry, monitoring, and revocation criteria. This record does not grant one. Risk acceptance by itself does not make PR #7's unchanged zero High/Critical check pass and cannot be represented as technical remediation.
+
+The owner has selected deferral, without granting an exception or approving a migration. No MVP tag or production-readiness declaration follows from this record. Gate 3 business-content evidence remains a separate owner dependency.
+
+## Independent review
+
+ArchitectAgent, ProductAgent, DatabaseAgent, SecurityAgent, and TestingAgent reviewed this record against the existing investigation evidence before commit. Their corrections to the watcher-path wording, draft/publication and data contracts, Studio build risks, and verification matrix are incorporated above. DesignAgent verified the migration risk summary against its prior review and requested the explicit importer-state, accessibility, viewport, and hosted screen-reader conditions now listed in requirement 3. These reviews validate the record's coverage; they are not approval to migrate, accept risk, or release.

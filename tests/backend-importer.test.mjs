@@ -171,7 +171,30 @@ test("Sanitizer strips HTML and XSS injection vectors", () => {
   assert.equal(eventHandler.text, "Fast Cloud Hosting");
 
   const encoded = sanitizeText("Marketing &amp; Sales &lt;Pro&gt;");
-  assert.equal(encoded.text, "Marketing & Sales <Pro>");
+  assert.equal(encoded.text, "Marketing & Sales Pro");
+  assert.equal(encoded.hadHtml, true);
+});
+
+test("Sanitizer keeps malformed and encoded markup inert as plain text", () => {
+  for (const input of [
+    "&lt;script&gt;alert(1)&lt;/script&gt;",
+    "&amp;lt;script&amp;gt;alert(1)&amp;lt;/script&amp;gt;",
+    "<script>alert(1)</script >Professional",
+    "<style>body{display:none}</style >Professional",
+    "<<script>script>alert(1)</<script>script>",
+    "&lt;img src=x onerror=alert(1)&gt;",
+  ]) {
+    const result = sanitizeText(input);
+    assert.equal(result.hadHtml, true, input);
+    assert.doesNotMatch(result.text, /[<>]/, input);
+  }
+
+  // This function produces display text, never a URL. Protocol-looking text
+  // must remain inert without a partial scheme denylist.
+  for (const input of ["javascript:alert(1)", "vbscript:msgbox(1)", "data:text/html,hello"]) {
+    const result = sanitizeText(input);
+    assert.doesNotMatch(result.text, /[<>]/, input);
+  }
 });
 
 test("Slug generation produces clean kebab-case slugs", () => {
@@ -205,7 +228,7 @@ test("Normalizer produces complete candidate with provenance and warnings", () =
   assert.equal(candidate.price, "49.00");
   assert.equal(candidate.merchantDomain, "acme.example");
   assert.ok(candidate.warnings.length > 0);
-  assert.ok(candidate.warnings.some((w) => w.includes("HTML")));
+  assert.ok(candidate.warnings.some((w) => w.includes("Normalized markup")));
   assert.ok(candidate.provenance.name.sourceUrl.includes("impact.com"));
   assert.ok(candidate.provenance.summary.retrievedAt);
 });
