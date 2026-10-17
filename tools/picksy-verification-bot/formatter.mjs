@@ -191,3 +191,92 @@ export function buildMobileStatusSnapshot({
       : `Status is ${overallStatus}. Attention may be required.`,
   };
 }
+
+/**
+ * Renders a sticky GitHub PR comment in clean Markdown.
+ */
+export function formatPrCommentMarkdown({
+  verification,
+  policy = {},
+  reportText = "",
+  marker = "<!-- picksy-verification-bot -->",
+}) {
+  const lines = [];
+  lines.push(marker);
+  lines.push("### 🤖 Picksy GitHub Verification Bot Report");
+  lines.push("");
+
+  const state = verification?.state || "UNKNOWN";
+  const stateBadge = {
+    VERIFIED: "🟢 **`VERIFIED`**",
+    FAILED: "🔴 **`FAILED`**",
+    UNVERIFIED: "🟡 **`UNVERIFIED`**",
+    CONFLICT: "🟠 **`CONFLICT`**",
+    BLOCKED: "🚫 **`BLOCKED`**",
+  }[state] || `⚪ **\`${state}\`**`;
+
+  lines.push("| Property | Value |");
+  lines.push("| :--- | :--- |");
+  lines.push(`| **Verdict** | ${stateBadge} |`);
+  lines.push(`| **Assigned Agent** | \`${verification?.agentName || "UNKNOWN"}\` |`);
+  lines.push(`| **Branch** | \`${verification?.branch || "N/A"}\` |`);
+  lines.push(`| **Commit SHA** | \`${verification?.headSha ? verification.headSha.slice(0, 7) : "N/A"}\` |`);
+  lines.push(`| **Scope** | \`${verification?.scope?.overallScope || "UNKNOWN"}\` (${verification?.scope?.summary || "N/A"}) |`);
+  lines.push(`| **Human Review Required** | ${verification?.requiresHumanReview ? "⚠️ **YES**" : "✅ **NO**"} |`);
+  lines.push("");
+
+  // Required checks table
+  lines.push("#### 🔍 Mandatory Check Status");
+  lines.push("");
+  lines.push("| Check Name | Status | Conclusion | Details |");
+  lines.push("| :--- | :--- | :--- | :--- |");
+  const checks = verification?.checks?.checks || [];
+  if (checks.length === 0) {
+    lines.push("| *(No check-runs observed)* | - | - | - |");
+  } else {
+    for (const c of checks) {
+      const conclusion = c.conclusion || c.status || "not_run";
+      const icon = conclusion === "success" ? "✅" : (conclusion === "failure" ? "❌" : "⏳");
+      lines.push(`| **${c.name}** | \`${c.status || "completed"}\` | ${icon} \`${conclusion}\` | ${c.detail || ""} |`);
+    }
+  }
+  lines.push("");
+
+  // Security Findings / Injection attempts
+  const findings = verification?.securityFindings || [];
+  if (findings.length > 0) {
+    lines.push("#### 🛡️ Security Findings");
+    lines.push("");
+    for (const f of findings) {
+      lines.push(`- **[${f.severity || "HIGH"}]** \`${f.type}\`: ${f.message}`);
+    }
+    lines.push("");
+  }
+
+  // Cross-agent conflicts
+  const conflicts = verification?.conflicts || [];
+  if (conflicts.length > 0) {
+    lines.push("#### ⚠️ Cross-Agent Ownership Conflicts");
+    lines.push("");
+    for (const cf of conflicts) {
+      lines.push(`- **File:** \`${cf.file}\` (${cf.agentA} vs ${cf.agentB}) — ${cf.message}`);
+    }
+    lines.push("");
+  }
+
+  // Collapsible ASCII report
+  if (reportText) {
+    lines.push("<details>");
+    lines.push("<summary>📋 Full Verification Report (Section 11 ASCII)</summary>");
+    lines.push("");
+    lines.push("```text");
+    lines.push(reportText.trim());
+    lines.push("```");
+    lines.push("</details>");
+    lines.push("");
+  }
+
+  lines.push(`*Report generated at ${new Date().toISOString()} · Repository: \`${policy.repository || "appiah233/Picksy"}\`*`);
+
+  return lines.join("\n");
+}
