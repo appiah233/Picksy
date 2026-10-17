@@ -92,6 +92,15 @@ test("Scenario 3: Agents modify the same file -> OWNERSHIP_CONFLICT, CONFLICT, o
   assert.deepEqual(conflicts[0].overlappingLines, [12, 19]);
 });
 
+test("A registered agent replacing UNKNOWN on the same PR does not conflict with itself", () => {
+  const engine = new VerificationEngine(policy);
+  engine.detectCrossAgentConflicts("UNKNOWN", ["tests/verification-bot.test.mjs"], "", "PR #14");
+  const conflicts = engine.detectCrossAgentConflicts("Codex", ["tests/verification-bot.test.mjs"], "", "PR #14");
+  assert.deepEqual(conflicts, []);
+  assert.equal(engine.activeAgentWork.has("UNKNOWN"), false);
+  assert.equal(engine.activeAgentWork.get("Codex").reference, "PR #14");
+});
+
 test("Scenario 4: Agent modifies an out-of-scope file -> OUT_OF_SCOPE, FAILED, requiresHumanReview: true", () => {
   const engine = new VerificationEngine(policy);
   // Codex touches prohibited storefront area

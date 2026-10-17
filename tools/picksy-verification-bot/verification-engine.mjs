@@ -239,6 +239,9 @@ export class VerificationEngine {
 
     for (const [otherAgent, otherWork] of this.activeAgentWork.entries()) {
       if (otherAgent.toLowerCase() === currentAgent.toLowerCase()) continue;
+      // A PR reassigned from UNKNOWN to its registered agent is the same work,
+      // not two agents editing overlapping branches.
+      if (otherWork.reference === prNumberOrCommit) continue;
 
       const otherFiles = (otherWork.files || []).map(normalizePath);
       const overlappingFiles = normCurrentFiles.filter((f) => otherFiles.includes(f));
@@ -267,6 +270,12 @@ export class VerificationEngine {
       }
     }
 
+    // Replace any stale identity for this same PR before registering it.
+    for (const [otherAgent, otherWork] of this.activeAgentWork.entries()) {
+      if (otherAgent !== currentAgent && otherWork.reference === prNumberOrCommit) {
+        this.activeAgentWork.delete(otherAgent);
+      }
+    }
     // Register current work in activeAgentWork
     this.activeAgentWork.set(currentAgent, {
       reference: prNumberOrCommit,
