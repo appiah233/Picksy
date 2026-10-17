@@ -1,11 +1,19 @@
 import assert from "node:assert/strict";
 import { execFileSync, execSync, spawn } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import http from "node:http";
 import { createServer } from "node:net";
 import path from "node:path";
 import test from "node:test";
 import { SYNTHETIC_MARKER } from "./fixtures/synthetic-catalog.ts";
+
+function readTextIfPresent(filePath) {
+  try {
+    return readFileSync(filePath, "utf8").trim();
+  } catch {
+    return null;
+  }
+}
 
 function getFreePort() {
   return new Promise((resolve, reject) => {
@@ -71,10 +79,11 @@ function ensureExactShaBuild(repoRoot, mockSanityPort) {
   } catch {}
 
   const buildMarker = path.join(repoRoot, ".next", "BUILD_COMMIT_SHA");
-  const existingSha = existsSync(buildMarker) ? readFileSync(buildMarker, "utf8").trim() : null;
+  const buildId = readTextIfPresent(path.join(repoRoot, ".next", "BUILD_ID"));
+  const existingSha = readTextIfPresent(buildMarker);
 
-  // CX-004 / CX-007: Rebuild if missing or SHA mismatch
-  const isValidBuild = existsSync(path.join(repoRoot, ".next", "BUILD_ID")) &&
+  // CX-004 / CX-007: Rebuild if missing or SHA mismatch (without TOCTOU existsSync check)
+  const isValidBuild = Boolean(buildId) &&
     (existingSha === headSha || (isDirty && existingSha === `${headSha}-dirty`));
 
   if (!isValidBuild) {
@@ -99,7 +108,7 @@ function ensureExactShaBuild(repoRoot, mockSanityPort) {
       }
     );
     try {
-      writeFileSync(buildMarker, isDirty ? `${headSha}-dirty` : headSha, "utf8");
+      writeFileSync(buildMarker, isDirty ? `${headSha}-dirty` : headSha, { encoding: "utf8" });
     } catch {}
   }
 }
