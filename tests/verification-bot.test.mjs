@@ -1258,7 +1258,6 @@ test("Server merges only a policy-eligible current head after passing checks and
   const sha = "b".repeat(40);
   const autoPolicy = { ...policy,
     tasks: [...policy.tasks, { taskId: "TEST-AUTOMERGE", agent: "Codex", branch: "feat/test-automerge" }],
-    autoMerge: { ...policy.autoMerge, eligibleTaskIds: ["TEST-AUTOMERGE"] },
   };
   for (const scenario of [
     { number: 14, expected: 1 },
@@ -1269,6 +1268,7 @@ test("Server merges only a policy-eligible current head after passing checks and
     { number: 16, reviewState: "COMMENTED", expected: 0 }, // Self-review fallback.
     { number: 17, staleHead: true, expected: 0 },
     { number: 18, failedCheck: true, expected: 0 },
+    { number: 19, branch: "feat/unregistered-work", expected: 0 },
   ]) {
     const merges = [];
     let prReads = 0;
@@ -1279,7 +1279,7 @@ test("Server merges only a policy-eligible current head after passing checks and
           number, state: "open", draft: scenario.draft === true,
           base: { ref: "main" },
           head: { sha: scenario.staleHead && prReads > 1 ? "c".repeat(40) : sha,
-            ref: "feat/test-automerge", repo: { full_name: "appiah233/Picksy" } },
+            ref: scenario.branch || "feat/test-automerge", repo: { full_name: "appiah233/Picksy" } },
           changed_files: 1, mergeable: true, mergeable_state: "clean", title: "Bot change", body: "",
         } };
       },
@@ -1299,7 +1299,7 @@ test("Server merges only a policy-eligible current head after passing checks and
     await bot.start();
     try {
       const body = JSON.stringify({ pull_request: { number: scenario.number,
-        head: { sha, ref: "feat/test-automerge" } } });
+        head: { sha, ref: scenario.branch || "feat/test-automerge" } } });
       const signature = createHmac("sha256", WEBHOOK_SECRET).update(Buffer.from(body)).digest("hex");
       const response = await fetch("http://localhost:3110/webhooks/github", { method: "POST", headers: {
         "x-hub-signature-256": `sha256=${signature}`, "x-github-delivery": `auto-merge-${scenario.number}`,

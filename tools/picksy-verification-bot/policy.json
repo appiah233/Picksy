@@ -10,7 +10,7 @@
   "autoMerge": {
     "baseBranches": ["main"],
     "excludedPullRequests": [7, 11, 13],
-    "eligibleTaskIds": ["TASK-CODEX-BOT-AUTOMERGE"]
+    "requireRegisteredTask": true
   },
   "specialConditions": {
     "mvpReleaseApproved": false,

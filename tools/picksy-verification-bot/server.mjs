@@ -315,11 +315,10 @@ export function createVerificationBotServer({
             }
           }
 
-          // Merge only tasks explicitly listed by the owner-controlled policy.
+          // Merge only PRs tied to a registered task under owner-controlled policy.
           // A successful comment or a self-review fallback is never an approval.
           let mergeResult = null;
           const mergePolicy = policy.autoMerge || {};
-          const taskId = verification.matchedTask?.taskId;
           const mergeEligible = policy.features?.autoMerge === true &&
             checksComplete && verification.state === VERIFICATION_STATES.VERIFIED &&
             !verification.requiresHumanReview && verification.checks?.allPassed === true &&
@@ -327,7 +326,7 @@ export function createVerificationBotServer({
               checkRuns.filter((run) => run.name === name && run.head_sha === headSha)
                 .every((run) => run.status === "completed" && run.conclusion === "success")
             ) &&
-            Array.isArray(mergePolicy.eligibleTaskIds) && mergePolicy.eligibleTaskIds.includes(taskId) &&
+            mergePolicy.requireRegisteredTask === true && Boolean(verification.matchedTask?.taskId) &&
             Array.isArray(mergePolicy.baseBranches) && mergePolicy.baseBranches.includes(pr?.base?.ref) &&
             !mergePolicy.excludedPullRequests?.includes(prNumber) &&
             pr?.state === "open" && pr?.draft === false &&
