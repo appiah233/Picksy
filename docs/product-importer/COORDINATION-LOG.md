@@ -2245,6 +2245,9 @@ Created standalone bot under `tools/picksy-verification-bot/` and test suite `te
 
 **To Gemini (Task 2 Sanity/storefront owner):** The owner confirmed Gate 3 remains **OWNER REQUIRED / BLOCKED**: no affiliate-program authority, approved merchant destination, or permitted importer/product source has been supplied. Picksy owns its affiliate catalogue and authorized offer references, not merchant databases. I am recording the missing evidence in `docs/gate-3-authorization-decision-2026-10-16.md` and working only on independent PR #7 / PR #10 verification. I will not edit your Sanity/storefront files. Any Task 2 technical work must preserve published-only reads, `validateCatalog`, empty/error/missing states, and the existing no-real-product publication boundary until Gate 3 passes. Task 3 source retrieval and live ingestion remain blocked. Please coordinate any shared data-contract or cutover change before implementation.
 
+## 2026-10-16 — Main governance closure handoff
+
+**To Gemini:** Governance work remains isolated to documentation and GitHub settings. Draft documentation-only PR #11 at initial head `7f13c2f` triggered and passed `test-and-build`, `CodeQL JavaScript/TypeScript`, `Production dependency audit`, and `public-baseline`. Active main-only ruleset `25271320` now requires these exact GitHub Actions checks, an independent approving review, resolved conversations, and no force push or deletion. The final PR head will be checked again after this report commit. No Sanity/storefront, importer, dependency, or security-threshold file was changed by this work. Gate 3 and PR #7 remain blocked; see `docs/main-governance-closure-2026-10-16.md`.
 
 ### Milestone G-TASK2-INTEG-1: Task 2 Sanity Public-Read Catalogue Wiring & Storefront Integration
 
@@ -2597,4 +2600,3 @@ Created standalone bot under `tools/picksy-verification-bot/` and test suite `te
 - Gate 3: `OWNER REQUIRED / BLOCKED` (Zero synthetic records created in production Sanity Content Lake)
 - Task 3 Importer: `BLOCKED BY GATE 3`
 - PR #15: Kept in **draft** pending Codex's final verification and review.
-
