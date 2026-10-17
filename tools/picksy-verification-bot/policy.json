@@ -2,6 +2,16 @@
   "version": "1.0.0",
   "project": "Picksy",
   "repository": "appiah233/Picksy",
+  "features": {
+    "prComments": true,
+    "prReviews": true,
+    "autoMerge": true
+  },
+  "autoMerge": {
+    "baseBranches": ["main"],
+    "excludedPullRequests": [7, 11, 13],
+    "requireRegisteredTask": true
+  },
   "specialConditions": {
     "mvpReleaseApproved": false,
     "gate3Status": "BLOCKED_BY_OWNER_BUSINESS_EVIDENCE",
@@ -260,6 +270,57 @@
         "No duplicate pipeline runs"
       ],
       "createdAt": "2026-10-16T14:45:00Z",
+      "status": "IN_PROGRESS"
+    },
+    {
+      "taskId": "TASK-CODEX-BOT-AUTOMERGE",
+      "agent": "Codex",
+      "project": "Picksy",
+      "objective": "Add policy-gated automatic PR merging after final checks and independent approval",
+      "branch": "feat/picksy-bot-automerge-main",
+      "expectedFiles": [
+        "tools/picksy-verification-bot/**",
+        "tests/verification-bot.test.mjs"
+      ],
+      "prohibitedAreas": [
+        "src/**",
+        "prisma/**",
+        ".github/**"
+      ],
+      "acceptanceCriteria": [
+        "Never merge blocked or draft PRs",
+        "Require all current-head checks and an actual approved review",
+        "Require GitHub to report a clean mergeable PR"
+      ],
+      "createdAt": "2026-10-17T00:00:00Z",
+      "status": "IN_PROGRESS"
+    },
+    {
+      "taskId": "TASK-GEMINI-SANITY-STOREFRONT",
+      "agent": "Gemini",
+      "project": "Picksy",
+      "objective": "Wire real Sanity public-read catalogue to customer-facing storefront (Task 2)",
+      "branch": "feat/task-2-sanity-storefront",
+      "pullRequest": 12,
+      "expectedFiles": [
+        "src/app/categories/[slug]/page.tsx",
+        "src/app/page.tsx",
+        "src/app/products/[slug]/page.tsx",
+        "src/lib/catalog.ts",
+        "tests/production-wiring.test.mjs",
+        "tests/sanity-catalog-storefront.test.mjs"
+      ],
+      "prohibitedAreas": [
+        "prisma/**",
+        "src/lib/importer/**",
+        ".github/**"
+      ],
+      "acceptanceCriteria": [
+        "All required GitHub checks pass green",
+        "Sanity catalogue wired with fail-closed security",
+        "No synthetic fixture leakage in production build"
+      ],
+      "createdAt": "2026-10-16T20:30:00Z",
       "status": "IN_PROGRESS"
     }
   ]
