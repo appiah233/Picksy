@@ -118,3 +118,100 @@ test("Storefront query succeeds when SANITY_API_WRITE_TOKEN is completely absent
     }
   }
 });
+
+// TASK2-CX-006: Revalidation interval parsing & bounds test
+test("parseRevalidateSeconds safely bounds inputs and rejects invalid/negative/oversized values", async () => {
+  const { parseRevalidateSeconds } = await import("../src/lib/sanity-client.ts");
+
+  assert.equal(parseRevalidateSeconds(10), 10);
+  assert.equal(parseRevalidateSeconds("30"), 30);
+  assert.equal(parseRevalidateSeconds(86400), 86400);
+
+  // Negative, zero, float, NaN, infinity, oversized, malformed strings fall back to 60
+  assert.equal(parseRevalidateSeconds(-5), 60);
+  assert.equal(parseRevalidateSeconds(0), 60);
+  assert.equal(parseRevalidateSeconds(3.14), 60);
+  assert.equal(parseRevalidateSeconds("3.14"), 60);
+  assert.equal(parseRevalidateSeconds(NaN), 60);
+  assert.equal(parseRevalidateSeconds(Infinity), 60);
+  assert.equal(parseRevalidateSeconds(-Infinity), 60);
+  assert.equal(parseRevalidateSeconds(999999), 60);
+  assert.equal(parseRevalidateSeconds(""), 60);
+  assert.equal(parseRevalidateSeconds("invalid"), 60);
+  assert.equal(parseRevalidateSeconds(null), 60);
+  assert.equal(parseRevalidateSeconds(undefined), 60);
+});
+
+// TASK2-CX-005: Write-capable client credential isolation & origin pinning
+test("SanityClient with write token strictly pins baseUrl to Sanity HTTPS and rejects custom baseUrl", async () => {
+  const { SanityClient } = await import("../src/lib/sanity-client.ts");
+
+  // Attempting to configure custom baseUrl with a token must throw immediately
+  assert.throws(
+    () => new SanityClient({ token: "write-token-secret", baseUrl: "https://custom.api.endpoint" }),
+    /Custom baseUrl is strictly forbidden for authenticated or write-capable Sanity clients/
+  );
+
+  // Even if SANITY_API_BASE_URL is set in environment, write-capable client ignores it
+  const origBase = process.env.SANITY_API_BASE_URL;
+  try {
+    process.env.SANITY_API_BASE_URL = "http://127.0.0.1:9999";
+    const client = new SanityClient({ token: "write-token-secret", projectId: "0tozsrrx" });
+    assert.equal(client.baseUrl, "https://0tozsrrx.api.sanity.io/v2024-01-01");
+  } finally {
+    if (origBase !== undefined) process.env.SANITY_API_BASE_URL = origBase;
+    else delete process.env.SANITY_API_BASE_URL;
+  }
+});
+
+test("Public tokenless SanityClient allows local loopback HTTP and rejects non-loopback HTTP", async () => {
+  const { SanityClient } = await import("../src/lib/sanity-client.ts");
+
+  // Allowed on local loopback
+  const localClient = new SanityClient({ baseUrl: "http://127.0.0.1:4567" });
+  assert.equal(localClient.baseUrl, "http://127.0.0.1:4567");
+
+  // Rejected on non-loopback HTTP
+  assert.throws(
+    () => new SanityClient({ baseUrl: "http://external-insecure.example.com" }),
+    /HTTP Sanity baseUrl is only allowed on local loopback/
+  );
+});
+
+// TASK2-CX-009: Verify cache: "no-store" is strictly preserved for authenticated reads and writes
+test("Authenticated queries and mutations always use cache: 'no-store' and never receive ISR options", async () => {
+  const { SanityClient } = await import("../src/lib/sanity-client.ts");
+
+  let capturedQueryOptions;
+  let capturedMutationOptions;
+
+  const authClient = new SanityClient({
+    token: "valid-write-token-12345",
+    revalidate: 30, // Even if revalidate is configured, authenticated operations must not cache
+    fetchFn: async (url, options) => {
+      if (options.method === "POST") {
+        capturedMutationOptions = options;
+        return {
+          ok: true,
+          json: async () => ({ results: [{ id: "doc-1", operation: "create" }] }),
+        };
+      }
+      capturedQueryOptions = options;
+      return {
+        ok: true,
+        json: async () => ({ result: [{ _id: "doc-1" }] }),
+      };
+    },
+  });
+
+  // 1. Authenticated query
+  await authClient.query("*[_type == 'importDraft']");
+  assert.equal(capturedQueryOptions.cache, "no-store", "Authenticated query must use cache: 'no-store'");
+  assert.equal(capturedQueryOptions.next, undefined, "Authenticated query must not have next.revalidate");
+
+  // 2. Authenticated mutation
+  await authClient.mutate([{ create: { _id: "doc-1", title: "Test" } }]);
+  assert.equal(capturedMutationOptions.cache, "no-store", "Mutation POST must use cache: 'no-store'");
+  assert.equal(capturedMutationOptions.next, undefined, "Mutation POST must not have next.revalidate");
+});
+
