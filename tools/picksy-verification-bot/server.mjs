@@ -378,10 +378,6 @@ export function createVerificationBotServer({
           typeof payload.check_run.name === "string";
         const isCheckSuite = payload?.check_suite && typeof payload.check_suite === "object";
 
-        if (eventType === "ping") {
-          return sendJson(res, 200, { status: "ok", message: "pong" });
-        }
-
         if ((isReview && eventType === "pull_request_review") ||
             (isCheckSuite && eventType === "check_suite")) {
           return sendJson(res, 200, { status: "ignored", eventType });
