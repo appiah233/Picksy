@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
-import { execFileSync, execSync, spawn } from "node:child_process";
+import { execFile, execSync, spawn } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import http from "node:http";
 import { createServer } from "node:net";
 import path from "node:path";
 import test from "node:test";
+import { promisify } from "node:util";
 import { SYNTHETIC_MARKER } from "./fixtures/synthetic-catalog.ts";
 
 function readTextIfPresent(filePath) {
@@ -31,8 +32,12 @@ async function waitForServer(url, serverProcess, timeoutMs = 90000) {
   let exited = false;
   let exitCode = null;
 
-  serverProcess.stdout.on("data", (d) => { serverOutput += d.toString(); });
-  serverProcess.stderr.on("data", (d) => { serverOutput += d.toString(); });
+  serverProcess.stdout.on("data", (d) => {
+    serverOutput += d.toString();
+  });
+  serverProcess.stderr.on("data", (d) => {
+    serverOutput += d.toString();
+  });
   serverProcess.on("exit", (code) => {
     exited = true;
     exitCode = code;
@@ -51,7 +56,9 @@ async function waitForServer(url, serverProcess, timeoutMs = 90000) {
     }
     await new Promise((r) => setTimeout(r, 400));
   }
-  throw new Error(`Timed out waiting for server at ${url} after ${timeoutMs}ms. Output:\n${serverOutput}`);
+  throw new Error(
+    `Timed out waiting for server at ${url} after ${timeoutMs}ms. Output:\n${serverOutput}`
+  );
 }
 
 async function stopServer(proc) {
@@ -59,13 +66,17 @@ async function stopServer(proc) {
   const exitPromise = new Promise((resolve) => proc.on("exit", resolve));
   proc.kill("SIGTERM");
   const fallback = setTimeout(() => {
-    try { proc.kill("SIGKILL"); } catch {}
+    try {
+      proc.kill("SIGKILL");
+    } catch {}
   }, 3000);
   await exitPromise;
   clearTimeout(fallback);
 }
 
-function ensureExactShaBuild(repoRoot, mockSanityPort) {
+const execFileAsync = promisify(execFile);
+
+async function ensureExactShaBuild(repoRoot, mockSanityPort) {
   let headSha = "unknown";
   try {
     headSha = execSync("git rev-parse HEAD", { cwd: repoRoot, encoding: "utf8" }).trim();
@@ -75,7 +86,8 @@ function ensureExactShaBuild(repoRoot, mockSanityPort) {
 
   let isDirty = false;
   try {
-    isDirty = execSync("git status --porcelain", { cwd: repoRoot, encoding: "utf8" }).trim().length > 0;
+    isDirty =
+      execSync("git status --porcelain", { cwd: repoRoot, encoding: "utf8" }).trim().length > 0;
   } catch {}
 
   const buildMarker = path.join(repoRoot, ".next", "BUILD_COMMIT_SHA");
@@ -83,30 +95,41 @@ function ensureExactShaBuild(repoRoot, mockSanityPort) {
   const existingSha = readTextIfPresent(buildMarker);
 
   // CX-004 / CX-007: Rebuild if missing or SHA mismatch (without TOCTOU existsSync check)
-  const isValidBuild = Boolean(buildId) &&
+  const isValidBuild =
+    Boolean(buildId) &&
     (existingSha === headSha || (isDirty && existingSha === `${headSha}-dirty`));
 
   if (!isValidBuild) {
-    execFileSync(
-      process.execPath,
-      [path.join(repoRoot, "node_modules", "next", "dist", "bin", "next"), "build"],
-      {
-        cwd: repoRoot,
-        stdio: "ignore",
-        env: {
-          ...process.env,
-          NEXT_TELEMETRY_DISABLED: "1",
-          NODE_ENV: "production",
-          SANITY_API_BASE_URL: `http://127.0.0.1:${mockSanityPort}`,
-          SANITY_REVALIDATE_SECONDS: "1",
-          NEXT_PUBLIC_SANITY_PROJECT_ID: "0tozsrrx",
-          NEXT_PUBLIC_SANITY_DATASET: "production",
-          NEXT_PUBLIC_SANITY_API_VERSION: "v2024-01-01",
-          SANITY_API_WRITE_TOKEN: "",
-        },
-        timeout: 300000,
-      }
-    );
+    // The mock Sanity server runs in this process. An async child leaves the event loop
+    // free to answer build-time catalogue queries.
+    try {
+      await execFileAsync(
+        process.execPath,
+        [path.join(repoRoot, "node_modules", "next", "dist", "bin", "next"), "build"],
+        {
+          cwd: repoRoot,
+          maxBuffer: 4 * 1024 * 1024,
+          env: {
+            ...process.env,
+            NEXT_TELEMETRY_DISABLED: "1",
+            NODE_ENV: "production",
+            SANITY_API_BASE_URL: `http://127.0.0.1:${mockSanityPort}`,
+            SANITY_REVALIDATE_SECONDS: "1",
+            NEXT_PUBLIC_SANITY_PROJECT_ID: "0tozsrrx",
+            NEXT_PUBLIC_SANITY_DATASET: "production",
+            NEXT_PUBLIC_SANITY_API_VERSION: "v2024-01-01",
+            SANITY_API_WRITE_TOKEN: "",
+          },
+          timeout: 900000,
+        }
+      );
+    } catch (error) {
+      const stdout = typeof error?.stdout === "string" ? error.stdout.slice(-3000) : "";
+      const stderr = typeof error?.stderr === "string" ? error.stderr.slice(-3000) : "";
+      throw new Error(`Exact-SHA build failed: ${error?.message}\n${stdout}\n${stderr}`, {
+        cause: error,
+      });
+    }
     try {
       writeFileSync(buildMarker, isDirty ? `${headSha}-dirty` : headSha, { encoding: "utf8" });
     } catch {}
@@ -173,9 +196,7 @@ function createSampleSanityData() {
           "Automated constant-time signature verification on webhooks",
           "Instant sticky PR review comments with check runs matrix",
         ],
-        limitations: [
-          "Requires GitHub organization permissions",
-        ],
+        limitations: ["Requires GitHub organization permissions"],
         suitableFor: "Mid-to-large engineering teams requiring automated PR quality gates.",
         notSuitableFor: "Solo developers with single-branch non-collaborative workflows.",
         conclusion: "Highly recommended for teams prioritizing release integrity and compliance.",
@@ -255,11 +276,14 @@ test("Built-and-Served Production Journey", async (t) => {
       const perspective = parsedUrl.searchParams.get("perspective");
 
       // Perspective filter: "published" perspective strictly filters out drafts.*
-      const filterDoc = (doc) => perspective === "published" ? !doc._id.startsWith("drafts.") : true;
+      const filterDoc = (doc) =>
+        perspective === "published" ? !doc._id.startsWith("drafts.") : true;
       const filtered = {
         categories: (mockSanityPayload.categories || []).filter(filterDoc),
         products: (mockSanityPayload.products || []).filter(filterDoc),
-        reviews: (mockSanityPayload.reviews || []).filter((r) => perspective === "published" ? !r.product?._ref?.startsWith("drafts.") : true),
+        reviews: (mockSanityPayload.reviews || []).filter((r) =>
+          perspective === "published" ? !r.product?._ref?.startsWith("drafts.") : true
+        ),
         merchants: (mockSanityPayload.merchants || []).filter(filterDoc),
         offers: (mockSanityPayload.offers || []).filter(filterDoc),
       };
@@ -271,10 +295,12 @@ test("Built-and-Served Production Journey", async (t) => {
 
     // Default "empty" mode
     res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({
-      result: { categories: [], products: [], reviews: [], merchants: [], offers: [] },
-      ms: 1,
-    }));
+    res.end(
+      JSON.stringify({
+        result: { categories: [], products: [], reviews: [], merchants: [], offers: [] },
+        ms: 1,
+      })
+    );
   });
 
   // Track client sockets for clean shutdown
@@ -286,17 +312,23 @@ test("Built-and-Served Production Journey", async (t) => {
   const mockSanityPort = await getFreePort();
   await new Promise((resolve) => mockSanityServer.listen(mockSanityPort, "127.0.0.1", resolve));
 
-  // TASK2-CX-004 & TASK2-CX-007: Ensure build artifact exists using the mock environment
-  ensureExactShaBuild(repoRoot, mockSanityPort);
-
-  const nextPort = await getFreePort();
-  const baseUrl = `http://127.0.0.1:${nextPort}`;
-
   let serverProcess;
   try {
+    // Keep the mock server in the cleanup scope even when the build fails.
+    await ensureExactShaBuild(repoRoot, mockSanityPort);
+
+    const nextPort = await getFreePort();
+    const baseUrl = `http://127.0.0.1:${nextPort}`;
     serverProcess = spawn(
       process.execPath,
-      [path.join(repoRoot, "node_modules", "next", "dist", "bin", "next"), "start", "-p", String(nextPort), "-H", "127.0.0.1"],
+      [
+        path.join(repoRoot, "node_modules", "next", "dist", "bin", "next"),
+        "start",
+        "-p",
+        String(nextPort),
+        "-H",
+        "127.0.0.1",
+      ],
       {
         cwd: repoRoot,
         env: {
@@ -318,13 +350,19 @@ test("Built-and-Served Production Journey", async (t) => {
     await waitForServer(baseUrl, serverProcess, 90000);
 
     // 1. Baseline Empty State (Gate 3)
-    await t.test("Served home page returns 200 OK with empty catalogue state under Gate 3", async () => {
-      const res = await fetch(`${baseUrl}/`);
-      assert.equal(res.status, 200);
-      const html = await res.text();
-      assert.ok(html.includes("<!DOCTYPE html>"), "must return valid HTML");
-      assert.ok(!html.includes(SYNTHETIC_MARKER), "served HTML must contain zero synthetic fixtures");
-    });
+    await t.test(
+      "Served home page returns 200 OK with empty catalogue state under Gate 3",
+      async () => {
+        const res = await fetch(`${baseUrl}/`);
+        assert.equal(res.status, 200);
+        const html = await res.text();
+        assert.ok(html.includes("<!DOCTYPE html>"), "must return valid HTML");
+        assert.ok(
+          !html.includes(SYNTHETIC_MARKER),
+          "served HTML must contain zero synthetic fixtures"
+        );
+      }
+    );
 
     await t.test("Served missing product route returns 404 Not Found", async () => {
       const res = await fetch(`${baseUrl}/products/non-existent-product-slug`);
@@ -345,108 +383,158 @@ test("Built-and-Served Production Journey", async (t) => {
       assert.ok(!html.includes("ghp_"));
     });
 
-    await t.test("Public Sanity read queries sent zero Authorization header to upstream API", async () => {
-      assert.ok(recordedSanityRequests.length > 0, "expected at least one query to mock Sanity");
-      for (const req of recordedSanityRequests) {
-        assert.equal(req.headers.authorization, undefined, "Public storefront queries must never carry Authorization header");
-      }
-    });
-
-    // 2. TASK2-CX-001: Live Publication Transition & ISR Freshness Proof
-    await t.test("Served application dynamically renders newly published catalogue records after ISR revalidation without restart", async () => {
-      // Transition mock Sanity state to published content
-      mockSanityMode = "published";
-      mockSanityPayload = createSampleSanityData();
-
-      // Wait 1200ms to exceed the 1000ms ISR revalidation window
-      await new Promise((r) => setTimeout(r, 1200));
-
-      // Trigger ISR background revalidation
-      await fetch(`${baseUrl}/`);
-
-      // Bounded polling loop to observe the freshly regenerated HTML
-      let refreshed = false;
-      let lastHtml = "";
-      for (let attempt = 0; attempt < 8; attempt++) {
-        await new Promise((r) => setTimeout(r, 600));
-        const res = await fetch(`${baseUrl}/`);
-        if (res.status === 200) {
-          lastHtml = await res.text();
-          if (lastHtml.includes("CodeFlow Pro")) {
-            refreshed = true;
-            break;
-          }
+    await t.test(
+      "Public Sanity read queries sent zero Authorization header to upstream API",
+      async () => {
+        assert.ok(recordedSanityRequests.length > 0, "expected at least one query to mock Sanity");
+        for (const req of recordedSanityRequests) {
+          assert.equal(
+            req.headers.authorization,
+            undefined,
+            "Public storefront queries must never carry Authorization header"
+          );
         }
       }
+    );
 
-      assert.ok(refreshed, "Freshly published product must appear in served HTML after ISR background revalidation");
-      assert.ok(lastHtml.includes("CRM &amp; Automation") || lastHtml.includes("CRM & Automation"), "Freshly published category must appear in served HTML");
-    });
+    // 2. TASK2-CX-001: Live Publication Transition & ISR Freshness Proof
+    await t.test(
+      "Served application dynamically renders newly published catalogue records after ISR revalidation without restart",
+      async () => {
+        // Transition mock Sanity state to published content
+        mockSanityMode = "published";
+        mockSanityPayload = createSampleSanityData();
+
+        // Wait 1200ms to exceed the 1000ms ISR revalidation window
+        await new Promise((r) => setTimeout(r, 1200));
+
+        // Trigger ISR background revalidation
+        await fetch(`${baseUrl}/`);
+
+        // Bounded polling loop to observe the freshly regenerated HTML
+        let refreshed = false;
+        let lastHtml = "";
+        for (let attempt = 0; attempt < 8; attempt++) {
+          await new Promise((r) => setTimeout(r, 600));
+          const res = await fetch(`${baseUrl}/`);
+          if (res.status === 200) {
+            lastHtml = await res.text();
+            if (lastHtml.includes("CodeFlow Pro")) {
+              refreshed = true;
+              break;
+            }
+          }
+        }
+
+        assert.ok(
+          refreshed,
+          "Freshly published product must appear in served HTML after ISR background revalidation"
+        );
+        assert.ok(
+          lastHtml.includes("CRM &amp; Automation") || lastHtml.includes("CRM & Automation"),
+          "Freshly published category must appear in served HTML"
+        );
+      }
+    );
 
     // 3. TASK2-CX-003: Published Product Route & Safe Merchant Destination
-    await t.test("Served product page renders published record and validated external merchant destination", async () => {
-      const res = await fetch(`${baseUrl}/products/codeflow-pro`);
-      assert.equal(res.status, 200);
-      const html = await res.text();
-      assert.ok(html.includes("CodeFlow Pro"), "Must display product title");
-      assert.ok(html.includes("Picksy Technical Editorial Team"), "Must display editorial review");
-      assert.ok(html.includes("https://codeflow.example.com/pricing/team?ref=picksy"), "Must contain approved destination link");
-      assert.ok(html.includes('rel="sponsored noopener noreferrer"'), "External merchant link must contain rel='sponsored noopener noreferrer'");
-    });
+    await t.test(
+      "Served product page renders published record and validated external merchant destination",
+      async () => {
+        const res = await fetch(`${baseUrl}/products/codeflow-pro`);
+        assert.equal(res.status, 200);
+        const html = await res.text();
+        assert.ok(html.includes("CodeFlow Pro"), "Must display product title");
+        assert.ok(
+          html.includes("Picksy Technical Editorial Team"),
+          "Must display editorial review"
+        );
+        assert.ok(
+          html.includes("https://codeflow.example.com/pricing/team?ref=picksy"),
+          "Must contain approved destination link"
+        );
+        assert.ok(
+          html.includes('rel="sponsored noopener noreferrer"'),
+          "External merchant link must contain rel='sponsored noopener noreferrer'"
+        );
+      }
+    );
 
     // 4. TASK2-CX-003: Published Category Route
-    await t.test("Served category page renders published category and associated products", async () => {
-      const res = await fetch(`${baseUrl}/categories/crm-automation`);
-      assert.equal(res.status, 200);
-      const html = await res.text();
-      assert.ok(html.includes("CRM &amp; Automation") || html.includes("CRM & Automation"), "Must display category title");
-      assert.ok(html.includes("CodeFlow Pro"), "Must display listed product under category");
-    });
+    await t.test(
+      "Served category page renders published category and associated products",
+      async () => {
+        const res = await fetch(`${baseUrl}/categories/crm-automation`);
+        assert.equal(res.status, 200);
+        const html = await res.text();
+        assert.ok(
+          html.includes("CRM &amp; Automation") || html.includes("CRM & Automation"),
+          "Must display category title"
+        );
+        assert.ok(html.includes("CodeFlow Pro"), "Must display listed product under category");
+      }
+    );
 
     // 5. TASK2-CX-003: Draft Content Exclusion
-    await t.test("Draft / unpublished content cannot be addressed directly on served routes", async () => {
-      const res1 = await fetch(`${baseUrl}/products/drafts.unapproved-product`);
-      assert.equal(res1.status, 404);
-      // Unapproved draft document residing in Content Lake must return 404
-      const res2 = await fetch(`${baseUrl}/products/unapproved-draft-tool`);
-      assert.equal(res2.status, 404, "Draft product slug must return 404 on public route");
-    });
+    await t.test(
+      "Draft / unpublished content cannot be addressed directly on served routes",
+      async () => {
+        const res1 = await fetch(`${baseUrl}/products/drafts.unapproved-product`);
+        assert.equal(res1.status, 404);
+        // Unapproved draft document residing in Content Lake must return 404
+        const res2 = await fetch(`${baseUrl}/products/unapproved-draft-tool`);
+        assert.equal(res2.status, 404, "Draft product slug must return 404 on public route");
+      }
+    );
 
     // 6. TASK2-CX-003: Absent / Missing Merchant Destination Handling
-    await t.test("Product with absent merchant destination renders safely without broken links", async () => {
-      const res = await fetch(`${baseUrl}/products/standalone-tool`);
-      assert.equal(res.status, 200);
-      const html = await res.text();
-      assert.ok(html.includes("Standalone Utility"));
-      assert.ok(!html.includes('href="undefined"'), "Must not leak href='undefined'");
-      assert.ok(!html.includes('href="http://undefined"'), "Must not leak href='http://undefined'");
-      assert.ok(!html.includes('aria-label="Merchant offer"'), "Must not render merchant offer section when destination is absent");
-    });
+    await t.test(
+      "Product with absent merchant destination renders safely without broken links",
+      async () => {
+        const res = await fetch(`${baseUrl}/products/standalone-tool`);
+        assert.equal(res.status, 200);
+        const html = await res.text();
+        assert.ok(html.includes("Standalone Utility"));
+        assert.ok(!html.includes('href="undefined"'), "Must not leak href='undefined'");
+        assert.ok(
+          !html.includes('href="http://undefined"'),
+          "Must not leak href='http://undefined'"
+        );
+        assert.ok(
+          !html.includes('aria-label="Merchant offer"'),
+          "Must not render merchant offer section when destination is absent"
+        );
+      }
+    );
 
     // 7. TASK2-CX-003: Upstream Failure Resilience
-    await t.test("Upstream Sanity 500 error and timeout do not crash the served application", async () => {
-      // 1. Upstream 500 error
-      mockSanityMode = "error";
-      await new Promise((r) => setTimeout(r, 1200));
-      const res500 = await fetch(`${baseUrl}/`);
-      assert.equal(res500.status, 200);
-      const html500 = await res500.text();
-      assert.ok(!html500.includes("Internal Server Error"));
+    await t.test(
+      "Upstream Sanity 500 error and timeout do not crash the served application",
+      async () => {
+        // 1. Upstream 500 error
+        mockSanityMode = "error";
+        await new Promise((r) => setTimeout(r, 1200));
+        const res500 = await fetch(`${baseUrl}/`);
+        assert.equal(res500.status, 200);
+        const html500 = await res500.text();
+        assert.ok(!html500.includes("Internal Server Error"));
 
-      // 2. Upstream timeout
-      mockSanityMode = "timeout";
-      await new Promise((r) => setTimeout(r, 1200));
-      const resTimeout = await fetch(`${baseUrl}/`);
-      assert.equal(resTimeout.status, 200);
-      const htmlTimeout = await resTimeout.text();
-      assert.ok(!htmlTimeout.includes("Internal Server Error"));
-    });
-
+        // 2. Upstream timeout
+        mockSanityMode = "timeout";
+        await new Promise((r) => setTimeout(r, 1200));
+        const resTimeout = await fetch(`${baseUrl}/`);
+        assert.equal(resTimeout.status, 200);
+        const htmlTimeout = await resTimeout.text();
+        assert.ok(!htmlTimeout.includes("Internal Server Error"));
+      }
+    );
   } finally {
     // TASK2-CX-004: Clean process, socket, and server shutdown
     await stopServer(serverProcess);
     for (const socket of openSockets) {
-      try { socket.destroy(); } catch {}
+      try {
+        socket.destroy();
+      } catch {}
     }
     openSockets.clear();
     await new Promise((resolve) => mockSanityServer.close(resolve));
