@@ -322,6 +322,36 @@
       ],
       "createdAt": "2026-10-16T20:30:00Z",
       "status": "IN_PROGRESS"
+    },
+    {
+      "taskId": "TASK-GEMINI-DEVELOP-MERGE",
+      "agent": "Gemini",
+      "project": "Picksy",
+      "objective": "Merge develop branch (storefront design system and responsive experience) to main",
+      "branch": "develop",
+      "pullRequest": 18,
+      "expectedFiles": [
+        "docs/design/**",
+        "docs/pr7-residual-risk-decision.md",
+        "docs/release-blocker-audit.md",
+        "src/app/globals.css",
+        "src/app/layout.tsx",
+        "src/app/not-found.tsx",
+        "src/config/site.ts",
+        "src/features/catalog/**",
+        "src/lib/catalog.ts",
+        "tools/picksy-verification-bot/policy.json"
+      ],
+      "prohibitedAreas": [
+        "prisma/**"
+      ],
+      "acceptanceCriteria": [
+        "All required GitHub checks pass green",
+        "Resolve merge conflicts cleanly",
+        "Storefront design system and responsive experience preserved"
+      ],
+      "createdAt": "2026-10-18T05:00:00Z",
+      "status": "IN_PROGRESS"
     }
   ]
 }
