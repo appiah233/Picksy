@@ -15,16 +15,6 @@ on:
       - ".github/scripts/check-dependency-audit.py"
   pull_request:
     branches: [main, develop]
-    paths:
-      - "src/**"
-      - "tools/**"
-      - "package.json"
-      - "package-lock.json"
-      - "next.config.*"
-      - "sanity.config.*"
-      - "sanity.cli.*"
-      - ".github/workflows/security-sast.yml"
-      - ".github/scripts/check-dependency-audit.py"
   schedule:
     - cron: "19 3 * * 1"
   workflow_dispatch:

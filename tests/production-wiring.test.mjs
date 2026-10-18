@@ -112,13 +112,13 @@ test("the only public catalogue routes are home, category and product", () => {
 });
 
 test("the real route modules render from the production accessor and publish nothing", async () => {
-  const home = renderHtml(homeRoute.default());
+  const home = renderHtml(await homeRoute.default());
   assert.equal(home, renderHtml(renderHomePage(catalog)));
   assert.ok(!/href="\/(?:categories|products)\//.test(home));
   assert.equal(home.match(/Coverage coming soon/g).length, siteConfig.categories.length);
 
-  assert.deepEqual(categoryRoute.generateStaticParams(), []);
-  assert.deepEqual(productRoute.generateStaticParams(), []);
+  assert.deepEqual(await categoryRoute.generateStaticParams(), []);
+  assert.deepEqual(await productRoute.generateStaticParams(), []);
   for (const { slug } of siteConfig.categories) {
     await assert.rejects(categoryRoute.default(params(slug)), notFound, `/categories/${slug}`);
     await assert.rejects(productRoute.default(params(slug)), notFound, `/products/${slug}`);
@@ -269,7 +269,8 @@ test("production source imports nothing from outside src and holds no fixture da
       assert.ok(
         resolved === undefined ||
           !resolved.startsWith("..") ||
-          (file === "app/studio/[[...tool]]/page.tsx" &&
+          ((file === "app/studio/[[...tool]]/page.tsx" ||
+            file === "app/studio/[[...tool]]/Studio.tsx") &&
             specifier === "../../../../sanity.config"),
         `${file} imports from outside src: ${specifier}`
       );

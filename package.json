@@ -4,9 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --turbopack",
+    "dev:webpack": "next dev",
     "build": "next build",
     "start": "next start",
+
     "lint": "eslint .",
     "test": "npm run lint && npm run typecheck && node --experimental-strip-types --test tests/*.test.mjs",
     "test:build": "npm run build && node --experimental-strip-types --test tests/build-isolation.mjs",
@@ -23,6 +25,7 @@
     "next": "^15.5.27",
     "next-auth": "^5.0.0-beta.32",
     "next-sanity": "11.6.13",
+    "node-html-parser": "6.1.13",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "sanity": "^4.22.1",
