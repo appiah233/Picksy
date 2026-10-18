@@ -57,9 +57,9 @@ export const siteConfig: SiteConfig = {
   ],
   mainNav: [
     { title: "Products", href: "/#products" },
+    { title: "Categories", href: "/#categories" },
     { title: "Deals", href: "/#deals" },
-    { title: "Reviews", href: "/#why-trust" },
-    { title: "About", href: "/#categories" },
+    { title: "Methodology", href: "/#why-trust" },
   ],
   footerNav: [
     {
