@@ -19,6 +19,7 @@ export interface Product {
   summary: string;
   intendedUser: string;
   intendedWorkflow: string;
+  editorialImage?: { url: string; alt: string };
   state: PublicationState;
 }
 

@@ -183,6 +183,19 @@ function validateProduct(
     errors.push(`invalid product state: ${product.id}`);
   if (!records.categories.some((category) => category.id === product.categoryId))
     errors.push(`unknown category for product: ${product.id}`);
+  if (product.editorialImage) {
+    const { url, alt } = product.editorialImage;
+    if (
+      typeof url !== "string" ||
+      !/^https:\/\/cdn\.sanity\.io\/images\/[a-zA-Z0-9_-]+\/[a-zA-Z0-9_-]+\/[a-zA-Z0-9_.-]+$/.test(
+        url
+      ) ||
+      typeof alt !== "string" ||
+      alt.trim().length < 5 ||
+      alt.length > 180
+    )
+      errors.push(`invalid editorial image for product: ${product.id}`);
+  }
   if (product.state === "published")
     validatePublishedProduct(product, records, reviews, today, errors);
 }

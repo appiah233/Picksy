@@ -4,6 +4,9 @@ import path from "path";
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  images: {
+    remotePatterns: [{ protocol: "https", hostname: "cdn.sanity.io", pathname: "/images/**" }],
+  },
   outputFileTracingRoot: path.join(__dirname),
   compiler: {
     styledComponents: true,
@@ -20,4 +23,3 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
-

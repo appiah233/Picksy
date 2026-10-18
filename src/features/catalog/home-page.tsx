@@ -1,41 +1,16 @@
 import Link from "next/link";
+import Image from "next/image";
 import {
   ArrowRight,
   ArrowUpRight,
-  Check,
-  ChevronRight,
-  GraduationCap,
-  Mail,
-  PackageSearch,
+  Compass,
+  ExternalLink,
   Search,
-  Server,
   ShieldCheck,
   Sparkles,
-  Workflow,
-  Zap,
 } from "lucide-react";
-import { siteConfig } from "@/config/site";
 import { assertValidatedCatalog, type CatalogAccess } from "@/lib/catalog-access";
 import type { Category, Product } from "@/lib/catalog-types";
-
-function renderCategoryIcon(iconName?: string, size = 22) {
-  switch (iconName) {
-    case "Workflow":
-      return <Workflow aria-hidden="true" size={size} />;
-    case "Search":
-      return <Search aria-hidden="true" size={size} />;
-    case "Mail":
-      return <Mail aria-hidden="true" size={size} />;
-    case "GraduationCap":
-      return <GraduationCap aria-hidden="true" size={size} />;
-    case "Server":
-      return <Server aria-hidden="true" size={size} />;
-    case "ShieldCheck":
-      return <ShieldCheck aria-hidden="true" size={size} />;
-    default:
-      return <PackageSearch aria-hidden="true" size={size} />;
-  }
-}
 
 function ProductCard({
   product,
@@ -50,263 +25,252 @@ function ProductCard({
 }) {
   const offer = catalog.getActiveOfferForProduct(product.id);
   return (
-    <article className="picksy-product-card">
-      <div className={`picksy-product-art picksy-product-art-${index % 4}`}>
-        <span className="picksy-card-tag">Reviewed pick</span>
-        <PackageSearch aria-hidden="true" className="picksy-product-art-icon" strokeWidth={1.25} />
-      </div>
-      <div className="picksy-product-body">
-        <div className="picksy-card-meta">
-          <span>{category.name}</span>
-          {offer && <span className="picksy-merchant">{offer.merchant.name}</span>}
-        </div>
-        <h3>{product.name}</h3>
-        <p className="picksy-product-summary">{product.summary}</p>
-        <div className="picksy-product-bottom">
-          <span>{offer ? "Offer available" : "Editorial review"}</span>
-          <Link href={`/products/${product.slug}`} className="picksy-card-button">
-            View review <ArrowUpRight aria-hidden="true" size={14} />
-          </Link>
-        </div>
-      </div>
+    <article className="discovery-product-card">
+      <Link href={`/products/${product.slug}`} className="discovery-product-hit">
+        <span className={`discovery-product-image discovery-product-image-${index % 4}`}>
+          {product.editorialImage ? (
+            <Image
+              src={product.editorialImage.url}
+              alt={product.editorialImage.alt}
+              fill
+              sizes="(max-width: 640px) 50vw, (max-width: 900px) 50vw, 25vw"
+              className="discovery-product-photo"
+            />
+          ) : (
+            <span className="discovery-product-initial" aria-hidden="true">
+              {product.name.slice(0, 1)}
+            </span>
+          )}
+          <span className="discovery-product-image-label">
+            Picksy / {String(index + 1).padStart(2, "0")}
+          </span>
+        </span>
+        <span className="discovery-product-info">
+          <span className="discovery-overline">
+            {category.name}
+            {offer ? ` · ${offer.merchant.name}` : ""}
+          </span>
+          <span className="discovery-product-title">{product.name}</span>
+          <span className="discovery-product-summary">{product.summary}</span>
+          <span className="discovery-product-link">
+            Read the review <ArrowUpRight aria-hidden="true" size={17} />
+          </span>
+        </span>
+      </Link>
     </article>
   );
 }
 
-function PreviewCard({ index }: { index: number }) {
-  return (
-    <article className="picksy-product-card picksy-preview-card">
-      <div className={`picksy-product-art picksy-product-art-${index % 4}`}>
-        <span className="picksy-card-tag">Coming soon</span>
-        <PackageSearch aria-hidden="true" className="picksy-product-art-icon" strokeWidth={1.25} />
-        <span className="picksy-preview-number">0{index + 1}</span>
-      </div>
-      <div className="picksy-product-body">
-        <div className="picksy-card-meta">
-          <span>Future pick</span>
-          <span>Picksy</span>
-        </div>
-        <h3>New discovery on its way</h3>
-        <p className="picksy-product-summary">
-          Verified products will appear here after editorial review.
-        </p>
-        <div className="picksy-product-bottom">
-          <span>Awaiting publication</span>
-          <span className="picksy-card-button picksy-card-button-disabled">Stay tuned</span>
-        </div>
-      </div>
-    </article>
-  );
-}
-
-// Only validated, published catalogue records become product links or offers.
+// Only validated, published catalogue records become product or category links.
 export function renderHomePage(catalog: CatalogAccess) {
   assertValidatedCatalog(catalog);
-  const publishedCategories = catalog
+  const categories = catalog
     .getPublishedCategories()
     .filter((category) => catalog.getPublishedProductsForCategory(category.id).length > 0);
-  const featured = publishedCategories
-    .flatMap((category) =>
-      catalog.getPublishedProductsForCategory(category.id).map((product) => ({ product, category }))
-    )
-    .slice(0, 4);
+  const products = categories.flatMap((category) =>
+    catalog.getPublishedProductsForCategory(category.id).map((product) => ({ product, category }))
+  );
+  const featured = products.slice(0, 4);
   return (
-    <div className="picksy-home">
-      <section className="picksy-hero" aria-labelledby="home-title">
-        <div className="picksy-hero-image" aria-hidden="true" />
-        <div className="picksy-container picksy-hero-content">
-          <div className="picksy-eyebrow">
-            <Sparkles aria-hidden="true" size={13} /> Product discovery platform
-          </div>
-          <h1 id="home-title">Discover What&apos;s Worth Buying.</h1>
-          <p className="picksy-hero-copy">
-            Picksy cuts through the noise. We research, compare, and recommend products so you can
-            shop with confidence.
+    <div className="discovery-home">
+      <section className="discovery-hero" aria-labelledby="home-title">
+        <div className="discovery-hero-photo" aria-hidden="true" />
+        <div className="picksy-container discovery-hero-inner">
+          <span className="discovery-eyebrow">
+            <span className="discovery-eyebrow-line" /> A considered way to discover
+          </span>
+          <h1 id="home-title">
+            Find the good
+            <br />
+            <em>in every choice.</em>
+          </h1>
+          <p>
+            Explore products through thoughtful reviews and clear merchant links. Discover what fits
+            your life, then choose where to shop.
           </p>
-          <div className="picksy-search" role="search">
-            <Search aria-hidden="true" size={19} />
-            <label htmlFor="picksy-search" className="sr-only">
-              Product search coming soon
-            </label>
-            <input
-              id="picksy-search"
-              type="search"
-              placeholder="Product search coming soon"
-              disabled
-            />
-            <button type="button" disabled>
-              Search
-            </button>
+          <div className="discovery-hero-actions">
+            <Link
+              href={featured.length ? "#products" : "#our-approach"}
+              className="discovery-button discovery-button-primary"
+            >
+              {featured.length ? "Explore the picks" : "Explore Picksy"}
+              <ArrowRight aria-hidden="true" size={18} />
+            </Link>
+            {categories.length > 0 && (
+              <Link href="#categories" className="discovery-button discovery-button-secondary">
+                Browse categories
+              </Link>
+            )}
           </div>
-          <div className="picksy-hero-actions">
-            <Link href="#products" className="picksy-button picksy-button-primary">
-              Explore Products <ArrowRight aria-hidden="true" size={17} />
-            </Link>
-            <Link href="#deals" className="picksy-button picksy-button-quiet">
-              <Zap aria-hidden="true" size={17} /> Today&apos;s Deals
-            </Link>
+          <div className="discovery-hero-caption">
+            <span>01 / DISCOVER</span>
+            <span>Independent product discovery</span>
           </div>
         </div>
       </section>
-
-      <div className="picksy-trust-strip">
-        <div className="picksy-container picksy-trust-grid">
-          <div>
-            <strong>{featured.length}</strong>
-            <span>Featured reviews</span>
-          </div>
-          <div>
-            <strong>Source-led</strong>
-            <span>Research standards</span>
-          </div>
-          <div>
-            <strong>Clear</strong>
-            <span>Affiliate disclosure</span>
-          </div>
-          <div>
-            <strong>Current</strong>
-            <span>Review dates shown</span>
-          </div>
+      <div className="discovery-intro-bar">
+        <div className="picksy-container discovery-intro-inner">
+          <span>
+            <Compass aria-hidden="true" size={20} /> Explore with intention
+          </span>
+          <span>
+            <Search aria-hidden="true" size={20} /> Read the details
+          </span>
+          <span>
+            <ExternalLink aria-hidden="true" size={20} /> Visit the merchant
+          </span>
         </div>
       </div>
-
-      <section id="products" className="picksy-section picksy-products-section">
-        <div className="picksy-container picksy-grid-container">
-          <div className="picksy-section-heading">
+      <section
+        id="products"
+        className="discovery-section discovery-products"
+        aria-labelledby="featured-heading"
+      >
+        <div className="picksy-container">
+          <div className="discovery-section-head">
             <div>
-              <span className="picksy-kicker">
-                {featured.length ? "Trending now" : "Coming soon"}
-              </span>
-              <h2>{featured.length ? "What Everyone's Buying" : "What’s worth discovering"}</h2>
+              <span className="discovery-overline">THE PICKSY EDIT</span>
+              <h2 id="featured-heading">Discoveries worth a closer look.</h2>
             </div>
-            <Link href="#categories" className="picksy-text-link">
-              View all <ChevronRight aria-hidden="true" size={16} />
-            </Link>
-          </div>
-          <p className="picksy-section-intro">
-            Explore researched products as our affiliate catalog grows.
-          </p>
-          <div className="picksy-product-grid">
-            {featured.map(({ product, category }, index) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                category={category}
-                catalog={catalog}
-                index={index}
-              />
-            ))}
-            {Array.from({ length: 4 - featured.length }, (_, index) => (
-              <PreviewCard key={index} index={featured.length + index} />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section id="deals" className="picksy-deals-section">
-        <div className="picksy-container picksy-deals-panel">
-          <div>
-            <span className="picksy-kicker">
-              <Zap aria-hidden="true" size={15} /> Best deals
-            </span>
-            <h2>Good finds are worth the wait.</h2>
             <p>
-              Merchant offers will appear here when a reviewed product has an approved affiliate
-              destination.
+              Published reviews from our catalogue. Each pick links to its full context before you
+              visit a merchant.
             </p>
           </div>
-          <Link href="#products" className="picksy-button picksy-button-primary">
-            Explore picks <ArrowRight aria-hidden="true" size={17} />
+          {featured.length ? (
+            <div className="discovery-product-grid">
+              {featured.map(({ product, category }, index) => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  category={category}
+                  catalog={catalog}
+                  index={index}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="discovery-empty">
+              <span className="discovery-empty-mark" aria-hidden="true">
+                <Sparkles size={33} strokeWidth={1.3} />
+              </span>
+              <div>
+                <span className="discovery-overline">THE COLLECTION IS TAKING SHAPE</span>
+                <h3>Good discoveries start with good questions.</h3>
+                <p>
+                  We are preparing reviewed products for publication. Explore how Picksy approaches
+                  every recommendation while the collection grows.
+                </p>
+              </div>
+              <Link href="#our-approach" className="discovery-text-link">
+                How Picksy works <ArrowRight aria-hidden="true" size={18} />
+              </Link>
+            </div>
+          )}
+        </div>
+      </section>
+      {categories.length > 0 && (
+        <section
+          id="categories"
+          className="discovery-section discovery-categories"
+          aria-labelledby="categories-heading"
+        >
+          <div className="picksy-container">
+            <div className="discovery-section-head">
+              <div>
+                <span className="discovery-overline">EXPLORE BY INTEREST</span>
+                <h2 id="categories-heading">Follow your curiosity.</h2>
+              </div>
+              <p>Browse categories with published product reviews.</p>
+            </div>
+            <div className="discovery-category-grid">
+              {categories.map((category, index) => (
+                <Link
+                  href={`/categories/${category.slug}`}
+                  className={`discovery-category-tile discovery-category-tile-${index % 3}`}
+                  key={category.id}
+                >
+                  <span className="discovery-category-index">
+                    {String(index + 1).padStart(2, "0")} / CATEGORY
+                  </span>
+                  <span className="discovery-category-bottom">
+                    <span>
+                      <strong>{category.name}</strong>
+                      <small>{category.description}</small>
+                    </span>
+                    <ArrowUpRight aria-hidden="true" size={23} />
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+      <section className="discovery-editorial" aria-labelledby="editorial-heading">
+        <div className="picksy-container discovery-editorial-inner">
+          <span className="discovery-overline">A LITTLE MORE CONTEXT</span>
+          <h2 id="editorial-heading">
+            The right find is the one that fits <em>you.</em>
+          </h2>
+          <p>
+            Start with the review, understand the tradeoffs, then visit a merchant if the product is
+            right for you.
+          </p>
+          <Link
+            href={featured.length ? "#products" : "#our-approach"}
+            className="discovery-button discovery-button-light"
+          >
+            {featured.length ? "Explore reviews" : "Our approach"}
+            <ArrowRight aria-hidden="true" size={18} />
           </Link>
         </div>
       </section>
-
-      <section id="categories" className="picksy-section picksy-categories-section">
-        <div className="picksy-container">
-          <div className="picksy-section-heading">
-            <div>
-              <span className="picksy-kicker">Explore more</span>
-              <h2>Find your next favorite.</h2>
-            </div>
-          </div>
-          <div className="picksy-category-grid">
-            {siteConfig.categories.map((category) => {
-              const published = publishedCategories.find((item) => item.id === category.id);
-              const content = (
-                <>
-                  <div className="picksy-category-card-top">
-                    <span className="picksy-category-icon">
-                      {renderCategoryIcon(category.iconName, 22)}
-                    </span>
-                    <span
-                      className={`picksy-category-badge ${
-                        published ? "picksy-category-badge-live" : ""
-                      }`}
-                    >
-                      {published ? "Verified" : "Upcoming"}
-                    </span>
-                  </div>
-                  <h3>{published?.name ?? category.name}</h3>
-                  <p>{published?.description ?? category.description}</p>
-                  <span className="picksy-category-status">
-                    {published ? "Explore reviewed products" : "Coverage coming soon"}{" "}
-                    {published && <ArrowRight aria-hidden="true" size={16} />}
-                  </span>
-                </>
-              );
-              return published ? (
-                <Link
-                  key={category.id}
-                  href={`/categories/${published.slug}`}
-                  className="picksy-category-card"
-                >
-                  {content}
-                </Link>
-              ) : (
-                <article key={category.id} className="picksy-category-card">
-                  {content}
-                </article>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      <section id="why-trust" className="picksy-section picksy-method-section">
-        <div className="picksy-container picksy-method-grid">
+      <section
+        id="our-approach"
+        className="discovery-section discovery-approach"
+        aria-labelledby="approach-heading"
+      >
+        <div className="picksy-container discovery-approach-grid">
           <div>
-            <span className="picksy-kicker">The Picksy promise</span>
-            <h2>Great picks start with good questions.</h2>
+            <span className="discovery-overline">WHY PICKSY</span>
+            <h2 id="approach-heading">A clearer path from curious to confident.</h2>
             <p>
-              We explain who a product suits, where it falls short, and the sources behind every
-              published recommendation.
+              Picksy is an independent discovery platform. We present product context and clearly
+              identify merchant links; purchases take place on the merchant&apos;s website.
             </p>
           </div>
-          <div className="picksy-method-points">
+          <div className="discovery-approach-list">
             <div>
-              <Search aria-hidden="true" />
-              <span>
-                <strong>Research first</strong>
-                <small>Published claims are checked against their sources.</small>
-              </span>
+              <span>01</span>
+              <div>
+                <h3>Explore considered reviews</h3>
+                <p>Understand who a product suits and where it may fall short.</p>
+              </div>
             </div>
             <div>
-              <ShieldCheck aria-hidden="true" />
-              <span>
-                <strong>Honest limitations</strong>
-                <small>Every review makes tradeoffs easy to see.</small>
-              </span>
+              <span>02</span>
+              <div>
+                <h3>See the source and the merchant</h3>
+                <p>Reviews show their sources. Available offers name the external merchant.</p>
+              </div>
             </div>
             <div>
-              <Check aria-hidden="true" />
-              <span>
-                <strong>Clear offers</strong>
-                <small>Affiliate links are labeled and use approved destinations.</small>
-              </span>
+              <span>03</span>
+              <div>
+                <h3>Decide on your terms</h3>
+                <p>
+                  Affiliate links are disclosed. Picksy may earn a commission when you buy through
+                  one.
+                </p>
+              </div>
             </div>
           </div>
         </div>
       </section>
+      <div className="discovery-closing">
+        <ShieldCheck aria-hidden="true" size={19} />
+        <span>Thoughtful discovery. Clear affiliate relationships. Your choice.</span>
+      </div>
     </div>
   );
 }

@@ -3,11 +3,15 @@ import test from "node:test";
 import { loadSource, renderHtml } from "./support/render-harness.mjs";
 
 const { SanityClient } = loadSource("lib/sanity-client.ts");
-const { SanityCatalogAdapter, PUBLISHED_CATALOG_GROQ } = loadSource("lib/sanity-catalog-adapter.ts");
+const { SanityCatalogAdapter, PUBLISHED_CATALOG_GROQ } = loadSource(
+  "lib/sanity-catalog-adapter.ts"
+);
 const { createCatalogAccess } = loadSource("lib/catalog-access.ts");
 const { renderHomePage } = loadSource("features/catalog/home-page.tsx");
 const { renderCategoryPage } = loadSource("features/catalog/category-page.tsx");
-const { renderProductPage, productMetadata, productStaticParams } = loadSource("features/catalog/product-page.tsx");
+const { renderProductPage, productMetadata, productStaticParams } = loadSource(
+  "features/catalog/product-page.tsx"
+);
 
 // Sample valid published Sanity Content Lake dataset
 function createSampleSanityData() {
@@ -121,7 +125,8 @@ function createSampleSanityData() {
         merchant: { _ref: "merch-codeflow" },
         approvedDestinationId: "dest-codeflow-annual",
         label: "Get CodeFlow Pro Team Plan",
-        disclosure: "Picksy earns an affiliate commission on qualifying purchases at no added cost to you.",
+        disclosure:
+          "Picksy earns an affiliate commission on qualifying purchases at no added cost to you.",
         state: "active",
       },
       {
@@ -165,7 +170,10 @@ test("Data Flow E2E: Sanity published record -> public query layer -> catalogue 
   const homeHtml = renderHtml(renderHomePage(catalog));
   assert.ok(homeHtml.includes("CodeFlow Pro"), "Home page should render CodeFlow Pro card");
   assert.ok(homeHtml.includes("ErgoDesk X"), "Home page should render ErgoDesk X card");
-  assert.ok(homeHtml.includes('href="/products/codeflow-pro"'), "Card should link to /products/codeflow-pro");
+  assert.ok(
+    homeHtml.includes('href="/products/codeflow-pro"'),
+    "Card should link to /products/codeflow-pro"
+  );
   assert.ok(homeHtml.includes("CodeFlow"), "Card should display merchant name");
 
   // 3. Render Category Page
@@ -176,18 +184,33 @@ test("Data Flow E2E: Sanity published record -> public query layer -> catalogue 
   // 4. Render Product Detail Page
   const productHtml = renderHtml(renderProductPage(catalog, "codeflow-pro"));
   assert.ok(productHtml.includes("CodeFlow Pro"), "Product page renders product heading");
-  assert.ok(productHtml.includes("Picksy Technical Editorial Team"), "Product page renders editorial author");
+  assert.ok(
+    productHtml.includes("Picksy Technical Editorial Team"),
+    "Product page renders editorial author"
+  );
   assert.ok(productHtml.includes("Who this is for"), "Product page renders fit section");
-  assert.ok(productHtml.includes("Evaluation method and sources"), "Product page renders methodology");
+  assert.ok(
+    productHtml.includes("Evaluation method and sources"),
+    "Product page renders methodology"
+  );
   assert.ok(productHtml.includes("Observed strengths"), "Product page renders strengths");
   assert.ok(productHtml.includes("Limitations"), "Product page renders limitations");
   assert.ok(productHtml.includes("Conclusion"), "Product page renders conclusion");
 
   // 5. Authorized Merchant Destination Link
-  assert.ok(productHtml.includes('href="https://codeflow.example.com/pricing/team?ref=picksy"'), "Renders exact approved merchant destination");
-  assert.ok(productHtml.includes('rel="sponsored noopener noreferrer"'), "Renders sponsored rel attribute for affiliate destination");
+  assert.ok(
+    productHtml.includes('href="https://codeflow.example.com/pricing/team?ref=picksy"'),
+    "Renders exact approved merchant destination"
+  );
+  assert.ok(
+    productHtml.includes('rel="sponsored noopener noreferrer"'),
+    "Renders sponsored rel attribute for affiliate destination"
+  );
   assert.ok(productHtml.includes('target="_blank"'), "Opens merchant destination in new tab");
-  assert.ok(productHtml.includes("Picksy earns an affiliate commission"), "Renders FTC required disclosure text");
+  assert.ok(
+    productHtml.includes("Picksy earns an affiliate commission"),
+    "Renders FTC required disclosure text"
+  );
 });
 
 test("Sanity Storefront: Multiple products in catalog render independently with correct metadata", async () => {
@@ -202,10 +225,7 @@ test("Sanity Storefront: Multiple products in catalog render independently with 
   const catalog = createCatalogAccess(records);
 
   const staticParams = productStaticParams(catalog);
-  assert.deepEqual(staticParams, [
-    { slug: "codeflow-pro" },
-    { slug: "ergo-desk-x" },
-  ]);
+  assert.deepEqual(staticParams, [{ slug: "codeflow-pro" }, { slug: "ergo-desk-x" }]);
 
   const meta1 = productMetadata(catalog, "codeflow-pro");
   assert.equal(meta1.title, "CodeFlow Pro review");
@@ -216,7 +236,7 @@ test("Sanity Storefront: Multiple products in catalog render independently with 
   assert.equal(meta2.description, "Customizable motorized standing desk for workstations.");
 });
 
-test("Sanity Storefront: Empty catalogue renders fallback placeholder state safely without crashing", async () => {
+test("Sanity Storefront: Empty catalogue renders one honest editorial state safely", async () => {
   const emptyData = {
     categories: [],
     products: [],
@@ -239,7 +259,14 @@ test("Sanity Storefront: Empty catalogue renders fallback placeholder state safe
 
   // Home page renders empty state
   const homeHtml = renderHtml(renderHomePage(catalog));
-  assert.ok(homeHtml.includes("Coverage coming soon"), "Home page renders coverage coming soon placeholders");
+  assert.ok(
+    homeHtml.includes("THE COLLECTION IS TAKING SHAPE"),
+    "Home page explains the empty collection"
+  );
+  assert.ok(
+    !homeHtml.includes("Coverage coming soon"),
+    "Home page does not repeat placeholder categories"
+  );
   assert.ok(!homeHtml.includes("/products/"), "Home page renders no product links when empty");
 
   // Detail and category routes return null / 404
@@ -249,7 +276,10 @@ test("Sanity Storefront: Empty catalogue renders fallback placeholder state safe
 
 test("Sanity Storefront: Draft / unpublished content strictly filtered from public storefront", async () => {
   // Query GROQ explicitly excludes drafts
-  assert.ok(PUBLISHED_CATALOG_GROQ.includes('!(_id in path("drafts.**"))'), "GROQ must exclude drafts in path");
+  assert.ok(
+    PUBLISHED_CATALOG_GROQ.includes('!(_id in path("drafts.**"))'),
+    "GROQ must exclude drafts in path"
+  );
 
   const sampleData = createSampleSanityData();
   const mockFetch = async () => ({
@@ -259,11 +289,11 @@ test("Sanity Storefront: Draft / unpublished content strictly filtered from publ
 
   const adapter = new SanityCatalogAdapter(new SanityClient({ fetchFn: mockFetch }));
   const { records } = await adapter.loadPublishedCatalog();
-  
+
   // Mark one product as draft in records to test catalog-access enforcement
   records.products[0].state = "draft";
   // Remove offer for the draft product so catalog validation invariants hold
-  records.offers = records.offers.filter(o => o.productId !== records.products[0].id);
+  records.offers = records.offers.filter((o) => o.productId !== records.products[0].id);
   const catalog = createCatalogAccess(records);
 
   // Unpublished product must not be returned by getPublishedProductBySlug
@@ -301,7 +331,11 @@ test("Sanity Storefront: Malformed or incomplete record fails closed and returns
 
   assert.equal(valid, false);
   assert.ok(errors.length > 0);
-  assert.deepEqual(records.products, [], "Malformed product review must cause fail-closed empty catalog");
+  assert.deepEqual(
+    records.products,
+    [],
+    "Malformed product review must cause fail-closed empty catalog"
+  );
 });
 
 test("Sanity Storefront: Sanity query failure is caught and falls back to empty catalogue gracefully", async () => {
@@ -332,7 +366,10 @@ test("Sanity Storefront: Missing affiliate destination renders editorial review 
 
   const productHtml = renderHtml(renderProductPage(catalog, "codeflow-pro"));
   assert.ok(productHtml.includes("CodeFlow Pro"), "Product review still renders");
-  assert.ok(!productHtml.includes("rel=\"sponsored noopener noreferrer\""), "No sponsored link rendered when offer is missing");
+  assert.ok(
+    !productHtml.includes('rel="sponsored noopener noreferrer"'),
+    "No sponsored link rendered when offer is missing"
+  );
   assert.ok(!productHtml.includes("Visit CodeFlow"), "No merchant CTA section rendered");
 });
 

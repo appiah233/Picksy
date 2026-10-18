@@ -4,7 +4,7 @@ export const siteConfig: SiteConfig = {
   name: "Picksy",
   tagline: "Discover what's worth buying.",
   description:
-    "Picksy researches and compares products so you can shop with confidence. Reviews appear after their sources and claims are verified.",
+    "Explore products through thoughtful reviews and clear merchant links. Discover what fits your life, then choose where to shop.",
   url: process.env.NEXT_PUBLIC_APP_URL || "",
   categories: [
     {
@@ -56,10 +56,9 @@ export const siteConfig: SiteConfig = {
     },
   ],
   mainNav: [
-    { title: "Products", href: "/#products" },
-    { title: "Categories", href: "/#categories" },
-    { title: "Deals", href: "/#deals" },
-    { title: "Methodology", href: "/#why-trust" },
+    { title: "Home", href: "/" },
+    { title: "Discover", href: "/#products" },
+    { title: "Our approach", href: "/#our-approach" },
   ],
   footerNav: [
     {
@@ -67,27 +66,9 @@ export const siteConfig: SiteConfig = {
       items: [
         { title: "Home", href: "/" },
         { title: "Products", href: "/#products" },
-        { title: "Deals", href: "/#deals" },
-        { title: "Categories", href: "/#categories" },
-        { title: "Why Trust Picksy", href: "/#why-trust" },
+        { title: "Our approach", href: "/#our-approach" },
       ],
     },
-    {
-      title: "Resources",
-      items: [
-        { title: "Guides (Coming Soon)", href: "#", disabled: true },
-        { title: "Reviews (Coming Soon)", href: "#", disabled: true },
-        { title: "Comparisons (Coming Soon)", href: "#", disabled: true },
-      ],
-    },
-    {
-      title: "Legal & Standards",
-      items: [
-        { title: "Privacy Policy", href: "#" },
-        { title: "Terms of Service", href: "#" },
-        { title: "Affiliate Disclosure", href: "/#disclosure" },
-        { title: "Editorial Guidelines", href: "#" },
-      ],
-    },
+    { title: "Transparency", items: [{ title: "Affiliate disclosure", href: "/#disclosure" }] },
   ],
 };

@@ -60,7 +60,8 @@ const importers = (file) =>
     .filter((candidate) => !isAdminOrImporter(candidate))
     .filter((candidate) =>
       specifiers(readSource(candidate)).some(
-        (specifier) => withoutExtension(target(candidate, specifier) ?? "") === withoutExtension(file)
+        (specifier) =>
+          withoutExtension(target(candidate, specifier) ?? "") === withoutExtension(file)
       )
     );
 
@@ -115,7 +116,8 @@ test("the real route modules render from the production accessor and publish not
   const home = renderHtml(await homeRoute.default());
   assert.equal(home, renderHtml(renderHomePage(catalog)));
   assert.ok(!/href="\/(?:categories|products)\//.test(home));
-  assert.equal(home.match(/Coverage coming soon/g).length, siteConfig.categories.length);
+  assert.match(home, /THE COLLECTION IS TAKING SHAPE/);
+  assert.doesNotMatch(home, /Coverage coming soon|Upcoming/);
 
   assert.deepEqual(await categoryRoute.generateStaticParams(), []);
   assert.deepEqual(await productRoute.generateStaticParams(), []);

@@ -26,6 +26,7 @@ export interface SanityProductDoc {
   summary: string;
   intendedUser: string;
   intendedWorkflow: string;
+  editorialImage?: { alt: string; url: string } | null;
 }
 
 export interface SanityReviewDoc {
@@ -82,20 +83,81 @@ const reference = (value: unknown): boolean => isRecord(value) && strings(value,
 const slug = (value: unknown): boolean => isRecord(value) && strings(value, ["current"]);
 const records = (value: unknown, check: (entry: Record<string, unknown>) => boolean): boolean =>
   Array.isArray(value) && value.every((entry) => isRecord(entry) && check(entry));
+const editorialImage = (value: unknown): boolean =>
+  value == null || (isRecord(value) && strings(value, ["alt", "url"]));
 
 // Content Lake responses are untrusted runtime data. This only checks shape;
 // validateCatalog remains responsible for editorial and destination invariants.
 function hasCatalogShape(value: unknown): value is SanityCatalogQueryResult {
-  return isRecord(value)
-    && records(value.categories, (entry) => strings(entry, ["_id", "name", "description", "audience"]) && slug(entry.slug))
-    && records(value.products, (entry) => strings(entry, ["_id", "name", "officialSource", "summary", "intendedUser", "intendedWorkflow"]) && slug(entry.slug) && reference(entry.category))
-    && records(value.reviews, (entry) => strings(entry, ["author", "evaluatedOn", "publishedOn", "reviewedOn", "methodology", "suitableFor", "notSuitableFor", "conclusion"]) && reference(entry.product) && stringArray(entry.sources) && stringArray(entry.strengths) && stringArray(entry.limitations))
-    && records(value.merchants, (entry) => strings(entry, ["_id", "name"]) && stringArray(entry.approvedHosts) && records(entry.approvedDestinations, (destination) => strings(destination, ["destinationId", "url", "authorizationReference"])))
-    && records(value.offers, (entry) => strings(entry, ["_id", "approvedDestinationId", "label", "disclosure"]) && reference(entry.product) && reference(entry.merchant) && (entry.state === "active" || entry.state === "inactive"));
+  return (
+    isRecord(value) &&
+    records(
+      value.categories,
+      (entry) => strings(entry, ["_id", "name", "description", "audience"]) && slug(entry.slug)
+    ) &&
+    records(
+      value.products,
+      (entry) =>
+        strings(entry, [
+          "_id",
+          "name",
+          "officialSource",
+          "summary",
+          "intendedUser",
+          "intendedWorkflow",
+        ]) &&
+        slug(entry.slug) &&
+        reference(entry.category) &&
+        editorialImage(entry.editorialImage)
+    ) &&
+    records(
+      value.reviews,
+      (entry) =>
+        strings(entry, [
+          "author",
+          "evaluatedOn",
+          "publishedOn",
+          "reviewedOn",
+          "methodology",
+          "suitableFor",
+          "notSuitableFor",
+          "conclusion",
+        ]) &&
+        reference(entry.product) &&
+        stringArray(entry.sources) &&
+        stringArray(entry.strengths) &&
+        stringArray(entry.limitations)
+    ) &&
+    records(
+      value.merchants,
+      (entry) =>
+        strings(entry, ["_id", "name"]) &&
+        stringArray(entry.approvedHosts) &&
+        records(entry.approvedDestinations, (destination) =>
+          strings(destination, ["destinationId", "url", "authorizationReference"])
+        )
+    ) &&
+    records(
+      value.offers,
+      (entry) =>
+        strings(entry, ["_id", "approvedDestinationId", "label", "disclosure"]) &&
+        reference(entry.product) &&
+        reference(entry.merchant) &&
+        (entry.state === "active" || entry.state === "inactive")
+    )
+  );
 }
 
-function invalidCatalog(errors: string[]): { records: CatalogRecords; valid: false; errors: string[] } {
-  return { records: { categories: [], products: [], reviews: [], merchants: [], offers: [] }, valid: false, errors };
+function invalidCatalog(errors: string[]): {
+  records: CatalogRecords;
+  valid: false;
+  errors: string[];
+} {
+  return {
+    records: { categories: [], products: [], reviews: [], merchants: [], offers: [] },
+    valid: false,
+    errors,
+  };
 }
 
 export const PUBLISHED_CATALOG_GROQ = `{
@@ -112,6 +174,7 @@ export const PUBLISHED_CATALOG_GROQ = `{
     category,
     name,
     officialSource,
+    editorialImage { alt, "url": asset->url },
     summary,
     intendedUser,
     intendedWorkflow
@@ -187,6 +250,7 @@ export class SanityCatalogAdapter {
       summary: p.summary,
       intendedUser: p.intendedUser,
       intendedWorkflow: p.intendedWorkflow,
+      editorialImage: p.editorialImage ?? undefined,
       state: "published",
     }));
 
