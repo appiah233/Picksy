@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "dev:webpack": "next dev",
-    "build": "next build",
+    "build": "node scripts/build-for-platform.mjs",
     "start": "next start",
     "lint": "eslint .",
     "test": "npm run lint && npm run typecheck && node --experimental-strip-types --test tests/*.test.mjs",
@@ -17,7 +17,8 @@
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
-    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
+    "build:next": "next build"
   },
   "dependencies": {
     "@sanity/image-url": "^2.1.1",
