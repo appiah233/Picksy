@@ -6,15 +6,19 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "dev:webpack": "next dev",
-    "build": "next build",
+    "build": "node scripts/build-for-platform.mjs",
     "start": "next start",
-
     "lint": "eslint .",
     "test": "npm run lint && npm run typecheck && node --experimental-strip-types --test tests/*.test.mjs",
     "test:build": "npm run build && node --experimental-strip-types --test tests/build-isolation.mjs",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
+    "build:next": "next build"
   },
   "dependencies": {
     "@sanity/image-url": "^2.1.1",
@@ -33,6 +37,7 @@
     "tailwind-merge": "^3.0.2"
   },
   "devDependencies": {
+    "@opennextjs/cloudflare": "^1.20.12",
     "@playwright/test": "1.64.0",
     "@tailwindcss/postcss": "^4.0.0",
     "@types/node": "^20.17.0",
@@ -44,7 +49,8 @@
     "openai": "^7.30.1",
     "prettier": "^3.5.0",
     "tailwindcss": "^4.0.0",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "wrangler": "^4.151.2"
   },
   "engines": {
     "node": ">=22.0.0"

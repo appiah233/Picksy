@@ -81,14 +81,16 @@ test("home → category → product journey renders by following the rendered li
     featuredProductLinks.map((link) => link.href),
     [`/products/${OFFER_PRODUCT_SLUG}`, `/products/${PLAIN_PRODUCT_SLUG}`]
   );
-  assert.equal(home.match(/New discovery on its way/g).length, 2);
+  assert.doesNotMatch(
+    home,
+    /New discovery on its way|Trending now|What Everyone.s Buying|Best deals/
+  );
   const categoryLinks = links(home).filter((link) => link.href.startsWith("/categories/"));
   assert.equal(categoryLinks.length, 1);
   assert.equal(categoryLinks[0].href, `/categories/${CATEGORY_SLUG}`);
   assert.equal(routeFile(categoryLinks[0].href), "app/categories/[slug]/page.tsx");
   assert.match(categoryLinks[0].text, new RegExp(`${SYNTHETIC_MARKER} Category`));
-  assert.match(categoryLinks[0].text, /Explore reviewed products/);
-  assert.equal(home.match(/Coverage coming soon/g).length, siteConfig.categories.length - 1);
+  assert.doesNotMatch(home, /Coverage coming soon|Upcoming/);
 
   const category = page(renderCategoryPage(catalog, categoryLinks[0].href.split("/").pop()));
   assert.match(category, new RegExp(`<h1[^>]*>${SYNTHETIC_MARKER} Category</h1>`));
@@ -130,6 +132,26 @@ test("home → category → product journey renders by following the rendered li
       assert.ok(routeFile(link.href), `internal link has no route: ${link.href}`);
     }
   }
+});
+
+test("empty homepage has one honest editorial state and no unsupported category or product links", () => {
+  const empty = createCatalogAccess({
+    categories: [],
+    products: [],
+    reviews: [],
+    merchants: [],
+    offers: [],
+  });
+  const home = page(renderHomePage(empty));
+  assert.match(home, /THE COLLECTION IS TAKING SHAPE/);
+  assert.equal(
+    links(home).filter(
+      (link) => link.href.startsWith("/products/") || link.href.startsWith("/categories/")
+    ).length,
+    0
+  );
+  assert.doesNotMatch(home, /Coverage coming soon|Upcoming|Today.s Deals|Trending|Best seller/);
+  assert.match(home, /purchases take place on the merchant/);
 });
 
 test("static routes and metadata are derived from published records only", () => {

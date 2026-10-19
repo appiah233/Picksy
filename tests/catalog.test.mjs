@@ -76,6 +76,21 @@ const fixture = () => ({
   ],
 });
 
+test("optional editorial product imagery requires a Sanity CDN URL and meaningful alt text", () => {
+  const records = fixture();
+  records.products[0].editorialImage = {
+    url: "https://cdn.sanity.io/images/project/dataset/photo-1200x900.jpg",
+    alt: "Unbranded headphones photographed on a pale surface",
+  };
+  assert.deepEqual(validateCatalog(records), []);
+  records.products[0].editorialImage.url = "https://evil.example/product.jpg";
+  assert.ok(validateCatalog(records).some((error) => error.includes("invalid editorial image")));
+  records.products[0].editorialImage.url =
+    "https://cdn.sanity.io/images/project/dataset/photo-1200x900.jpg";
+  records.products[0].editorialImage.alt = "x";
+  assert.ok(validateCatalog(records).some((error) => error.includes("invalid editorial image")));
+});
+
 test("a complete catalog passes validation", () =>
   assert.deepEqual(validateCatalog(fixture()), []));
 

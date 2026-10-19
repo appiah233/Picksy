@@ -38,6 +38,22 @@ export const productType = defineType({
       validation: (Rule) => Rule.required().uri({ scheme: ["https"] }),
     }),
     defineField({
+      name: "editorialImage",
+      title: "Editorial product image",
+      description:
+        "Optional image for public discovery cards. Use an accurate image of this product.",
+      type: "image",
+      options: { hotspot: true },
+      fields: [
+        defineField({
+          name: "alt",
+          title: "Image description",
+          type: "string",
+          validation: (Rule) => Rule.required().min(5).max(180),
+        }),
+      ],
+    }),
+    defineField({
       name: "summary",
       title: "Summary",
       type: "text",
@@ -77,4 +93,3 @@ export const productType = defineType({
     },
   },
 });
-
