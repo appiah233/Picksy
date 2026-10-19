@@ -22,7 +22,6 @@ The [final completion audit on merged `main`](https://github.com/appiah233/Picks
 For this recheck, an isolated checkout of PR #7 commit `b4e0ed92359b6c0cb81ac06c571bcb114c5614cb` with its committed `package-lock.json` ran `npm audit --omit=dev --json` under Node `22.23.2` and npm `10.9.8`. It reported **13 High / 11 Moderate / 0 Critical**, matching the [PR #7 GitHub job](https://github.com/appiah233/Picksy/actions/runs/38908448749) and the thirteen package names in this record. A fresh audit on the current local root checkout also reported 13/11/0; that checkout's lockfile differs from PR #7 only by the root `node-html-parser` declaration. The historical 16/11/0 response cannot currently be reproduced and must not be silently presented as the current PR #7 baseline. Neither response satisfies the zero High/Critical gate.
 
 An isolated `npm audit fix --package-lock-only --ignore-scripts --dry-run --json` on the PR #7 checkout proposed **zero added, removed, or changed packages** and left the worktree clean. Its own advisory response reported 15 High / 11 Moderate / 0 Critical, another count inconsistent with the plain audit response despite no package edit. Treat this as evidence that advisory responses need capture and comparison, not as a remediated dependency tree. No safe package update was identified by that dry run.
-
 ## Root paths and major-version result
 
 | Root/direct dependency | Current affected production path | Candidate path and consequence |

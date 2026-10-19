@@ -4,15 +4,38 @@ import {
   ArrowUpRight,
   Check,
   ChevronRight,
+  GraduationCap,
+  Mail,
   PackageSearch,
   Search,
+  Server,
   ShieldCheck,
   Sparkles,
+  Workflow,
   Zap,
 } from "lucide-react";
 import { siteConfig } from "@/config/site";
 import { assertValidatedCatalog, type CatalogAccess } from "@/lib/catalog-access";
 import type { Category, Product } from "@/lib/catalog-types";
+
+function renderCategoryIcon(iconName?: string, size = 22) {
+  switch (iconName) {
+    case "Workflow":
+      return <Workflow aria-hidden="true" size={size} />;
+    case "Search":
+      return <Search aria-hidden="true" size={size} />;
+    case "Mail":
+      return <Mail aria-hidden="true" size={size} />;
+    case "GraduationCap":
+      return <GraduationCap aria-hidden="true" size={size} />;
+    case "Server":
+      return <Server aria-hidden="true" size={size} />;
+    case "ShieldCheck":
+      return <ShieldCheck aria-hidden="true" size={size} />;
+    default:
+      return <PackageSearch aria-hidden="true" size={size} />;
+  }
+}
 
 function ProductCard({
   product,
@@ -30,7 +53,7 @@ function ProductCard({
     <article className="picksy-product-card">
       <div className={`picksy-product-art picksy-product-art-${index % 4}`}>
         <span className="picksy-card-tag">Reviewed pick</span>
-        <PackageSearch aria-hidden="true" className="picksy-product-art-icon" strokeWidth={1.2} />
+        <PackageSearch aria-hidden="true" className="picksy-product-art-icon" strokeWidth={1.25} />
       </div>
       <div className="picksy-product-body">
         <div className="picksy-card-meta">
@@ -53,9 +76,9 @@ function ProductCard({
 function PreviewCard({ index }: { index: number }) {
   return (
     <article className="picksy-product-card picksy-preview-card">
-      <div className={`picksy-product-art picksy-product-art-${index}`}>
+      <div className={`picksy-product-art picksy-product-art-${index % 4}`}>
         <span className="picksy-card-tag">Coming soon</span>
-        <PackageSearch aria-hidden="true" className="picksy-product-art-icon" strokeWidth={1.2} />
+        <PackageSearch aria-hidden="true" className="picksy-product-art-icon" strokeWidth={1.25} />
         <span className="picksy-preview-number">0{index + 1}</span>
       </div>
       <div className="picksy-product-body">
@@ -148,7 +171,7 @@ export function renderHomePage(catalog: CatalogAccess) {
       </div>
 
       <section id="products" className="picksy-section picksy-products-section">
-        <div className="picksy-container">
+        <div className="picksy-container picksy-grid-container">
           <div className="picksy-section-heading">
             <div>
               <span className="picksy-kicker">
@@ -211,9 +234,18 @@ export function renderHomePage(catalog: CatalogAccess) {
               const published = publishedCategories.find((item) => item.id === category.id);
               const content = (
                 <>
-                  <span className="picksy-category-icon">
-                    <PackageSearch aria-hidden="true" size={23} />
-                  </span>
+                  <div className="picksy-category-card-top">
+                    <span className="picksy-category-icon">
+                      {renderCategoryIcon(category.iconName, 22)}
+                    </span>
+                    <span
+                      className={`picksy-category-badge ${
+                        published ? "picksy-category-badge-live" : ""
+                      }`}
+                    >
+                      {published ? "Verified" : "Upcoming"}
+                    </span>
+                  </div>
                   <h3>{published?.name ?? category.name}</h3>
                   <p>{published?.description ?? category.description}</p>
                   <span className="picksy-category-status">
