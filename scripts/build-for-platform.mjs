@@ -8,4 +8,3 @@ const command =
     : "npm run build:next";
 
 execSync(command, { stdio: "inherit" });
-
