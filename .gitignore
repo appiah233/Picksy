@@ -55,3 +55,9 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+# Cloudflare OpenNext output and local state
+.open-next/
+.wrangler/
+.dev.vars*
+!.dev.vars.example

@@ -23,3 +23,8 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+
+// Initialize Cloudflare bindings during local Next.js development.
+import("@opennextjs/cloudflare").then(({ initOpenNextCloudflareForDev }) =>
+  initOpenNextCloudflareForDev()
+);
