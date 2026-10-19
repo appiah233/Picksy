@@ -249,7 +249,7 @@ test("external links come only from catalogue records", () => {
     ) {
       continue;
     }
-    const text = readSource(file);
+    const text = readSource(file).replace(/xmlns="http:\/\/www\.w3\.org\/2000\/svg"/g, "");
     if (file !== PRODUCTION_CATALOGUE) {
       assert.ok(!/https?:\/\/|["'`]\/\/\w/i.test(text), `${file} contains a hard-coded URL`);
     }
