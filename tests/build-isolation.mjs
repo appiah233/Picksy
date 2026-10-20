@@ -38,7 +38,7 @@ test("production build output contains no synthetic fixture content", () => {
 
 test("the build contains only the home, category and product routes in the public catalog", () => {
   const publicRoutes = Object.keys(manifest("server/app-paths-manifest.json"))
-    .filter((route) => !route.startsWith("/admin/") && !route.startsWith("/api/") && !route.startsWith("/studio/"))
+    .filter((route) => !route.startsWith("/admin/") && !route.startsWith("/api/") && !route.startsWith("/studio/") && !route.startsWith("/icon.svg"))
     .sort();
   assert.deepEqual(publicRoutes, [
     "/_not-found/page",
@@ -68,7 +68,7 @@ test("the build publishes no category or product page", () => {
   // drop out of `dynamicRoutes`, where it could serve pages this check cannot see.
   const prerender = manifest("prerender-manifest.json");
   assert.deepEqual(
-    Object.keys(prerender.routes).filter((route) => !route.startsWith("/admin/")).sort(),
+    Object.keys(prerender.routes).filter((route) => !route.startsWith("/admin/") && !route.startsWith("/icon.svg")).sort(),
     ["/", "/_not-found"]
   );
   const publicDynamicRoutes = Object.keys(prerender.dynamicRoutes)

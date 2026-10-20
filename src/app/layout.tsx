@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
-import { ArrowUpRight, Compass, Sparkles } from "lucide-react";
+import { ArrowUpRight, Sparkles } from "lucide-react";
 import { siteConfig } from "@/config/site";
 import "./globals.css";
 
@@ -75,7 +75,7 @@ export default function RootLayout({
             <div className="discovery-footer-top">
               <div>
                 <span className="discovery-footer-logo">
-                  <Compass aria-hidden="true" size={23} /> Picksy.
+                  <Sparkles aria-hidden="true" size={23} strokeWidth={1.75} /> Picksy.
                 </span>
                 <p>{siteConfig.description}</p>
               </div>
